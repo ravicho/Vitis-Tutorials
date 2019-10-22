@@ -183,7 +183,7 @@ convolve_fpga_1:m_axi_gmem2-DDR[0]          RD = 0.035 KB               WR = 0.0
 1. Use the following command to view the Profile Summary report.
 
    ```
-   make view_prof_report TARGET=hw_emu STEP=localbuf
+   make view_run_summary TARGET=hw_emu STEP=localbuf
    ```
 
 The kernel execution time is now 1.574 ms rather than the baseline performance of 3.903 ms (see the following table). This is because you removed all global memory accesses for the calculation and stored image data and coefficients in the local memory.

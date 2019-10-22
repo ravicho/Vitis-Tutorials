@@ -195,10 +195,10 @@ convolve_fpga_1:m_axi_gmem3-DDR[0]          RD = 0.035 KB               WR = 0.0
 
 ## View the Profile Summary Report for Hardware Emulation
 
-1. Use the following command to view the Profile Summary report.
+Use the following command to view the Profile Summary report.
 
    ```
-   make view_prof_report TARGET=hw_emu STEP=dataflow
+  make view_run_summary TARGET=hw_emu STEP=dataflow
    ```
 
 The kernel execution time is now reduced to 0.059 ms.

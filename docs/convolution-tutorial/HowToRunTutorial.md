@@ -65,29 +65,19 @@ To analyze the performance of the design, you need to look at the reports. For d
 
 ## Makefile Targets for Viewing Profile and Timeline Trace
 
-1. Use the following command to view the Profile Summary report.
+Use the following command to view the Profile Summary report and Application Timeline trace.
 
    ```
-   make view_prof_report TARGET=hw_emu STEP=multicu
+   make view_run_summary TARGET=hw_emu STEP=multicu
    ```
 
-   The makefile uses the following command to open the Profile Summary report.
+   The makefile uses the following command to open vitis analyzer. Once opned, click the profile report or Application Timeline trace on left pane.
 
    ```
-   vitis_analyzer -open ./sdaccel_profile_summary_hw_emu.csv
+   vitis_analyzer xclbin.run_summary
    ```
 
-2. Use the following command to view the Timeline Trace report.
 
-   ```
-   make view_timeline_trace TARGET=hw STEP=multicu
-   ```
-
-   The makefile uses the following command to launch the Vitis IDE and display the Timeline Trace report.
-
-   ```
-   vitis_analyzer -open ./sdaccel_timeline_trace_hw.csv
-   ```
 
 ## Makefile Targets for Clean Up
 

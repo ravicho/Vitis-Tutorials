@@ -85,7 +85,7 @@ Use the following instructions to convert the C code into kernel code and conver
 1. Use the following command to view the Profile Summary report.
 
     ```
-    make view_prof_report TARGET=hw_emu STEP=baseline
+    make view_run_summary TARGET=hw_emu STEP=baseline
     ```
 
 1. Now, look at the Profile Summary report. In the *Kernel Execution* section, you can see that the kernel execution time is 3.903 ms. This number will be used to measure the performance boost after each optimization step.

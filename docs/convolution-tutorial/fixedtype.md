@@ -110,10 +110,10 @@ Open the `convolve_fpga.cpp` file from `src/fixedpoint` and make the following m
 
 ## View the Profile Summary Report for Hardware Emulation
 
-1. Use the following command to view the Profile Summary report.
+Use the following command to view the Profile Summary report.
 
 ```
-make view_prof_report TARGET=hw_emu STEP=fixedpoint
+make view_run_summary TARGET=hw_emu STEP=fixedpoint
 ```
 
 The kernel execution time is now reduced to 0.46 ms. The reason for this significant speedup is that the computation for-loop is pipelined when using fixed point operations. Therefore, the total latency is improved significantly.
