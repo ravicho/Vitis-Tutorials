@@ -186,11 +186,8 @@ convolve_fpga_1:m_axi_gmem2-DDR[0]          RD = 0.035 KB               WR = 0.0
    make view_run_summary TARGET=hw_emu STEP=localbuf
    ```
 
-The kernel execution time is now 1.574 ms rather than the baseline performance of 3.903 ms (see the following table). This is because you removed all global memory accesses for the calculation and stored image data and coefficients in the local memory.
 
-2. Capture the performance data from Profile Summary report, and add it to the following table.
-
-Here is the updated table. There is a 2.48x boost on kernel execution time perspective.
+2. The kernel execution time is now 1.574 ms rather than the baseline performance of 3.903 ms (see the following table). This is because you removed all global memory accesses for the calculation and stored image data and coefficients in the local memory. There is a 2.48x boost on kernel execution time perspective.
 
 | Step               | Image Size | Time (HW-EM)(ms) | Reads (KB)      | Writes (KB) | Avg. Read (KB) | Avg. Write (KB) |  BW (MBps) |
 | :----------------- | :--------- | ---------------: | --------------: | ----------: | -------------: | --------------: | ---------: |

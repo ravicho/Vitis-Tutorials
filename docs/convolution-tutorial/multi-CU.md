@@ -233,12 +233,12 @@ You can now perform four times more work in about the same amount of time. You t
 1. Use the following command to view the Profile Summary report.
 
 ```
-make view_prof_report TARGET=hw_emu STEP=multicu
+make view_run_summary TARGET=hw_emu STEP=multicu
 ```
 
-The kernel execution time for four CUs is around 0.065 ms each.
 
-Here is the updated table.
+2. The kernel execution time for four CUs is around 0.065 ms each. Capture the performance data from Profile Summary report, and add it to the following table. 
+
 
 | Step                    | Image Size | Time (HW-EM)(ms) | Reads (KB)      | Writes (KB)    | Avg. Read (KB) | Avg. Write (KB) | BW (MBps)  |
 | :-------------------    | :--------- | ---------------: | --------------: | -------------: | -------------: | --------------: | ---------: |
