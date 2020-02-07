@@ -49,3 +49,7 @@ In this step, you will build and run this application to create baseline perform
 <p align="center"><b><a href="/docs/vitis-getting-started/">Return to Getting Started Pathway</a> — <a href="./README.md">Return to Start of Tutorial</a></b></p>
 
 <p align="center"><sup>Copyright&copy; 2019 Xilinx</sup></p>
+
+<p align="center"><b>
+Start the next step: <a href="./experience-acceleration.md">2: Experience the Acceleration </a>
+</b></p>
