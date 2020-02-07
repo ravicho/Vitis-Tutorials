@@ -1,4 +1,4 @@
-# Part 1: Experience FPGA Acceleration
+# Experience FPGA Acceleration
 
 ## Algorithm Overview  
 
@@ -29,8 +29,6 @@ The algorithm can be divided in two sections:
     --------------------------------------------------------------------
     ```
 
->**NOTE:** The performance number might vary depending on the EC2 instance type and workload activity at that time.
-
 The above command computes the score for 100,000 documents, amounting to 1.39 GBytes of data. The execution time is 4.112 seconds and throughput is computed as follows:
 
 Throughput = Total data/Total time = 1.39 GB/4.112s = 338 MB/s
@@ -42,6 +40,37 @@ Throughput = Total data/Total time = 1.39 GB/4.112s = 338 MB/s
 To improve the performance, you need to identify bottlenecks where the application is spending the majority of the total running time.
 
 As we can see from the execution times in the previous step, the applications spends 89% of time in calculating the hash function and 11 % of the time in computing the document score.
+
+Because you only have the function `runOnCPU` to accelerate, you will run the executable and evaluate the execution time of the function.
+
+1. Extract the profile result.
+
+   ```
+   gprof host gmon.out> gprofresult.txt
+   ```
+
+2. To view the Profile Summary report, open the `gprofresult.txt` file in a text editor. You should see results similar to the following table.
+
+   Each sample counts as 0.01 seconds.
+
+   The flat profile report of the individual sub-functions is as follows.
+
+   | % Time | Cumulative Seconds | Self Seconds | Total Calls  | ms/Call  | ms/Call  | Name                         |  
+   |--------:|-----------:|----------:|----------:|----------:|----------:|:------------------------------|  
+   | 48.06  |     8.76  |   8.76   |   802078720  |  0.00  |  0.00   | MurmurHash2                 |
+   | 24.93  |     13.30 |   4.54   |    1   |   4.54   |   13.30 | runOnCPU              |
+   | 21.14 | 17.15 | 3.85 | 1 | 2.85 | 4.88 | setupData |
+
+   You can see that the application spends almost half of time in the sub-function `MurmurHash2`, which computes the hash values of words in each document. The `MurmurHash2` sub-function is called by `runOnCPU` and `setupData` functions as part of the `main` function.
+
+   The following table shows a high-level view of the functions inside the `main` function as part of the call graph for the previous report `gprofresults.txt`.
+
+    | % Time |         Self              |  Children | Called | Name
+   |--------:|-----------:|----------:|----------:|:------------|
+   | 72.9 | 4.54 | 8.76 | 1 | runOnCPU |
+   | 26.8  | 3.85 | 1.03 | 1 | setupData |
+
+   From a `main` function standpoint, you can see that the CPU spends almost 73% of time in the `runOnCPU` function. In the `runOnCPU` function, there is only one child call, which is the `MurmurHash2` function. Based on execution times from table, you can deduce that around 66% **((8.76/(8.76+4.54))** of time is spent by calls to `MurmurHash2`. Therefore, accelerating the `runOnCPU` function would significantly increase the performance of the application.
 
 ## Identify Functions to Accelerate on FPGA
 
