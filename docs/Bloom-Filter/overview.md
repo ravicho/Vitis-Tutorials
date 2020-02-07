@@ -10,9 +10,8 @@
  </tr>
 </table>
 
-# 1. Evaluating the Original Application
+# Overview of Original Application
 
-## Application
 
 Document filtering is a process where a system monitors a stream of incoming documents, classifies them according to their content, and selects those that are deemed relevant to a specific user or topic. The ability to filter out irrelevant information and organize relevant information into meaningful categories is important in a world where big data is playing an increasingly central role. Document filtering is used extensively in the everyday querying, retrieval, and analysis of information that helps to identify relevant documents of interest.
 
