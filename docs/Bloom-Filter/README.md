@@ -61,3 +61,7 @@ The labs in this tutorial use:
 <p align= center><b><a href="/README.md">Return to Main Page</a> — <a href="/docs/vitis-getting-started/">Return to Getting Started Pathway</a></b></p>
 </br>
 <p align="center"><sup>Copyright&copy; 2019 Xilinx</sup></p>
+
+<p align="center"><b>
+Start the next step: <a href="./experience-acceleration.md">2: Experience FPGA Acceleration</a>
+</b></p>
