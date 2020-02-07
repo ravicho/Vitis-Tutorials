@@ -241,6 +241,8 @@ You can see that by efficiently leveraging FPGA acceleration, the throughput of 
 
 3. With FPGA acceleration, processing the entire American Library of Congress would take about 1.65 hours (15TB/2.52GB/s), as opposed to 12.3 hours with a software-only approach.
 
+## Architectural spec for Kenel, TArget Performance, Interface Widths, Datapath Widths etc. (TODO)
+
 ## Conclusion
 
 In this lab, you have seen how to profile an application and determine which parts are best suited for FPGA acceleration. You've also experienced that once an accelerator is efficiently implemented, FPGA-accelerated applications on AWS F1 instances execute significantly faster than conventional software-only applications.
