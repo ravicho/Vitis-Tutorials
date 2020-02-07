@@ -70,3 +70,8 @@ You will be using hardware emulation runs for measuring performance in each step
 <p align="center"><b><a href="/docs/vitis-getting-started/">Return to Getting Started Pathway</a> — <a href="./README.md">Return to Start of Tutorial</a></b></p>
 
 <p align="center"><sup>Copyright&copy; 2019 Xilinx</sup></p>
+
+<p align="center"><b>
+Start the next step: <a href="./accelerate-the-application.md">2: Accelerate the Application on FPGA</a>
+</b></p>
+
