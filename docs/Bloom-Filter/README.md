@@ -1,4 +1,4 @@
-
+﻿﻿
 <table>
  <tr>
    <td align="center"><img src="https://www.xilinx.com/content/dam/xilinx/imgs/press/media-kits/corporate/xilinx-logo.png" width="30%"/><h1>2019.2 Vitis™ Application Acceleration Development Flow Tutorials</h1>
@@ -43,19 +43,17 @@ The labs in this tutorial use:
 
 ## Tutorial Overview
 
-1. [Brief overview of the Application](): 
-2. [Experience Acceleration performance vs Software-only version]():
-3. [Accelerating the Appplication](experience-the-acceleration.md)():
-4. [Implementing the Kernel]():
+1. [Brief overview of the Application](overview.md): 
+2. [Experience Acceleration performance vs Software-only version](experience-acceleration.md):
+3. [Accelerating the Appplication](accelerate-the-application.md)():
+4. [Implementing the Kernel](implement-kernel.md):
 5. [Data movement between Host and Kernel](data-movement.md):
-
-
 
 [Evaluating the Original Application](original.md): In this lab, the original C++ based application computes scores for the documents using a bloom filter. This lab also discusses setting realistic performance goals for an accelerated application.
 2. [Creating a Vitis Core Development Kit Application from the C Application](baseline_fpga.md): Convert the original C code into a host program and hardware kernel that is called by the host using the OpenCL™ API.
 3. [Optimizing Memory Transfers](localbuf.md): Learn methods for optimizing the hardware kernel for improved memory access. You will learn how to use local cache to efficiently use the FPGA bandwidth.
 4. [Optimizing with Dataflow](dataflow.md): Improve the compute efficiency of your kernel, applying dataflow and streaming to improve the datapath in your kernel.
-5. [Using Out-of-Order Queues and Multiple Compute Units](multicu.md): Modify the OpenCL API calls in the host program to allow for out-of-order task execution and increase parallelism on the accelerator by synthesizing multiple kernels to perform the work.
+
 6. [Optimizing with Multiple DDR Banks](multiddr.md): Modify the makefile for kernel connectivity to DDR banks and modify the host program to properly allocate the input documents to different DDR Banks.
 7. [Running the Accelerator in Hardware](runningonhardware.md): All the previous steps have been run in Hardware Emulation mode. Here you run the application on the acceleration hardware.
 </br>
