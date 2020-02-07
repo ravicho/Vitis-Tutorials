@@ -1,4 +1,4 @@
-﻿
+
 <table>
  <tr>
    <td align="center"><img src="https://www.xilinx.com/content/dam/xilinx/imgs/press/media-kits/corporate/xilinx-logo.png" width="30%"/><h1>2019.2 Vitis™ Application Acceleration Development Flow Tutorials</h1>
@@ -22,12 +22,6 @@ You begin this tutorial with a baseline application and profile to examine the p
 
 In general, this application has use cases in data analytics, such as browsing through unstructured data of emails and text files to identify the documents that closely associate with a specific user and send notifications accordingly.
 
-In this tutorial, you will work with the following optimization techniques:
-
-* Memory transfer optimizations
-* Dataflow and streams
-* Multiple compute units (CUs) and out-of-order (overlap of data and compute)
-* Multiple DDR banks and PLRAM
 
 # Before You Begin
 
@@ -49,7 +43,15 @@ The labs in this tutorial use:
 
 ## Tutorial Overview
 
-1. [Evaluating the Original Application](original.md): In this lab, the original C++ based application computes scores for the documents using a bloom filter. This lab also discusses setting realistic performance goals for an accelerated application.
+1. [Brief overview of the Application](): 
+2. [Experience Acceleration performance vs Software-only version]():
+3. [Accelerating the Appplication](experience-the-acceleration.md)():
+4. [Implementing the Kernel]():
+5. [Data movement between Host and Kernel](data-movement.md):
+
+
+
+[Evaluating the Original Application](original.md): In this lab, the original C++ based application computes scores for the documents using a bloom filter. This lab also discusses setting realistic performance goals for an accelerated application.
 2. [Creating a Vitis Core Development Kit Application from the C Application](baseline_fpga.md): Convert the original C code into a host program and hardware kernel that is called by the host using the OpenCL™ API.
 3. [Optimizing Memory Transfers](localbuf.md): Learn methods for optimizing the hardware kernel for improved memory access. You will learn how to use local cache to efficiently use the FPGA bandwidth.
 4. [Optimizing with Dataflow](dataflow.md): Improve the compute efficiency of your kernel, applying dataflow and streaming to improve the datapath in your kernel.
