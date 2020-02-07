@@ -1,4 +1,4 @@
-# Experience FPGA Acceleration
+# Architect FPGA Application
 
 ## Algorithm Overview  
 
@@ -252,5 +252,5 @@ In the next lab you will dive deeper into the details of the FPGA-accelerated ap
 ---------------------------------------
 
 <p align="center"><b>
-Start the next step: <a href="./data_movement.md">2: Optimizing CPU and FPGA interactions</a>
+Start the next step: <a href="./implement-kernel.md">2: Implement the Kernel</a>
 </b></p>
