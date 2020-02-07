@@ -10,7 +10,7 @@
  </tr>
 </table>
 
-# 1. Experiencing Acceleration Peformance
+# Experiencing Acceleration Peformance
 
 
 In this step, you will build and run this application to create baseline performance data for the original, non-accelerated application.
