@@ -12,8 +12,9 @@
 
 # Experiencing Acceleration Peformance
 
+In this step, You will profile the Bloom filter application and evaluate which sections are best suited for FPGA acceleration. You will also experience the acceleration potential by running the application first as a software-only version and then as an optimized FPGA-accelerated version. 
 
-In this step, you will build and run this application to create baseline performance data for the original, non-accelerated application.
+Before we go into details of how to architect the applicationn and recommendations to accelerate the application, let's look at the FPGA acceleration that can be observed by a precomplied FPGA accelerator.
 
 ## Build the C Application
 
@@ -24,10 +25,10 @@ Navigate to the `cpu_src` directory and run **make** to generate the executable 
 
 ## Run the C Application and Generate the Golden Result
 
-In this step, run the original C application with the number of documents as the argument and generate the golden output files for comparison purposes using the following commands.
+Run the original C application with the number of documents as the argument and generate the golden output files for comparison purposes using the following commands.
 
    ```
-   cd bloom/design/cpu_src/build
+   cd bloom-filter/design/cpu_src/build
    ./host cpu 100000
    ```
 
