@@ -1,18 +1,13 @@
-# Architect FPGA Application
-
-## Algorithm Overview  
-
-The application used in this lab reads a stream of incoming documents, and computes a score for each document based on the user’s interest, represented by a search array. It is representative of real-time filtering systems that monitor news feeds and send relevant articles to end users.
-
-In practical scenarios, the number and size of the documents to be searched can be very large and because the monitoring of events must run in real time, a smaller execution time is required for processing all the documents.
-
-The core of the application is a Bloom filter, a space-efficient probabilistic data structure used to test whether an element is a member of a set. The algorithm attempts to find the best matching documents for a specific search array. The search array is the filter that matches documents against the user’s interest. In this application, each document is reduced to a set of 32-bit words, where each word is a pair of 24-bit word ID and 8-bit frequency representing the occurrence of the word ID in the document. The search array consists of a smaller set of word IDs and each word ID has a weight associated with it, which represents the significance of the word. The application computes a score for each document to determine its relevance to the given search array.
-
+# Methodology for Architecting a Device Accelerated Application
+  
+## Establish a Baseline Application Performance and Establish Goals
 The algorithm can be divided in two sections:  
-* Computing the hash function of the words and creating output flags
-* Computing document scores based on the previously computed output flags
+* Compute the hash function : This is performed on the number of the input words and creates output flags for each word.
+* Compute document score : Uses the output flags from previous hash function and creates the score of each document.
 
-## Run the Application on the CPU
+Under Bloom-filter/cpu_src, main funcion calls runOnCPU function. This function is implemented in Bloom-filter/cpu_src/compute_score_host.cpp file.
+
+### Measure Running Time
 
 1. Navigate to the `cpu_src` directory and run the following command.
 
@@ -35,21 +30,22 @@ Throughput = Total data/Total time = 1.39 GB/4.112s = 338 MB/s
 
 3. It is estimated that in 2012, all the data in the American Library of Congress amounted to 15 TB. Based on the above numbers, we can estimate that run processing the entire American Library of Congress on the host CPU would take about 12.3 hours (15TB / 338MB/s).
 
-## Profiling the Application
+### Profiling the Application
 
 To improve the performance, you need to identify bottlenecks where the application is spending the majority of the total running time.
 
 As we can see from the execution times in the previous step, the applications spends 89% of time in calculating the hash function and 11 % of the time in computing the document score.
 
-Because you only have the function `runOnCPU` to accelerate, you will run the executable and evaluate the execution time of the function.
+Because you only have the function `runOnCPU` to accelerate, you will run the executable and evaluate the execution time of the function. We also need to recompile the host with necessary flags to enable for gprof. 
 
-1. Extract the profile result.
+1. Recompile the host and extract the profile result.
 
    ```
+   make host_gprof; 
    gprof host gmon.out> gprofresult.txt
    ```
 
-2. To view the Profile Summary report, open the `gprofresult.txt` file in a text editor. You should see results similar to the following table.
+2. To view the gprof report, open the `gprofresult.txt` file in a text editor. You should see results similar to the following table.
 
    Each sample counts as 0.01 seconds.
 
@@ -57,9 +53,9 @@ Because you only have the function `runOnCPU` to accelerate, you will run the ex
 
    | % Time | Cumulative Seconds | Self Seconds | Total Calls  | ms/Call  | ms/Call  | Name                         |  
    |--------:|-----------:|----------:|----------:|----------:|----------:|:------------------------------|  
-   | 48.06  |     8.76  |   8.76   |   802078720  |  0.00  |  0.00   | MurmurHash2                 |
-   | 24.93  |     13.30 |   4.54   |    1   |   4.54   |   13.30 | runOnCPU              |
-   | 21.14 | 17.15 | 3.85 | 1 | 2.85 | 4.88 | setupData |
+   | 43.19  |     7.55  |   7.55   |  699484226   |  0.00  |  0.00   | MurmurHash2                 |
+   | 28.30  |     12.49 |   4.94   |    1   |   4.94   |   12.49 | runOnCPU              |
+   | 17.81 | 15.60 | 3.11 | 1 | 3.11 | 4.99 | setupData |
 
    You can see that the application spends almost half of time in the sub-function `MurmurHash2`, which computes the hash values of words in each document. The `MurmurHash2` sub-function is called by `runOnCPU` and `setupData` functions as part of the `main` function.
 
@@ -119,22 +115,27 @@ unsigned int MurmurHash2 ( const void * key, int len, unsigned int seed )
 }   
 ```
 
-* From the above code, you can see that the function reads a word from the memory and calculates hash output.
+**Computational Complexity** is the number of basic computing operations requried to execute the funciton. From the above code, 
 
 * The compute of hash for a single word ID consists of four XOR, 3 arithmetic shifts, and two multiplication operations.
+* A shift of 1-bit in an arithmetic shift operation takes one clock cycle on the CPU. 
 
-* A shift of 1-bit in an arithmetic shift operation takes one clock cycle on the CPU.
-
-* The three arithmetic operations shift a total of 44-bits (when`len=3` in the above code) to compute the hash which requires 44 clock cycles just to shift the bits on the host CPU. On the FPGA, it is possible to create custom architectures and therefore create an accelerator that will shift data by an arbitrary number of bits in a single clock cycle.
+The three arithmetic operations shift a total of 44-bits (when`len=3` in the above code) to compute the hash which requires 44 clock cycles just to shift the bits on the host CPU. On the FPGA, it is possible to create custom architectures and therefore create an accelerator that will shift data by an arbitrary number of bits in a single clock cycle.
 
 * The FPGA also has dedicated DSP units, which perform multiplications faster than the CPU. Even though the CPU runs at a frequency 8 times higher than the FPGA, the arithmetic shift and multiplication operations can perform faster on the FPGA because of its customizable hardware architecture.
+
+
+
+
+
+
 
 * Therefore this function is a good candidate for FPGA acceleration.
 
 3. Close the file.
 
 ### Evaluating the "Compute Output Flags from Hash" code section
-
+### Identify Acceleration Potential of Hash Function
 1. Open `compute_score_host.cpp` file in the file editor. 
 
 2. The code at lines 32-58 which computes output flags is shown below.
@@ -178,12 +179,16 @@ for(unsigned int doc=0;doc<total_num_docs;doc++)
 
 * The algorithm makes sequential access to the `input_doc_words` array. This is an important property as it allows very efficient accesses to DDR when implemented in the FPGA.  
 
+
+
  4. Close the file. 
  
 This code section is a a good candidate for FPGA as the hash function can run faster on FPGA and we can compute hashes for multiple words in parallel by reading multiple words from DDR in burst mode. 
 
 
-### Evaluating the "Compute Document Score" code section
+
+
+### ### Identify Acceleration Potential of "Compute Document Score" function
 
 The code for computing the document score is shown below:
 
@@ -215,39 +220,61 @@ for(unsigned int doc=0, n=0; doc<total_num_docs;doc++)
 Based on this analysis, it is only beneficial to accelerate the "Compute Output Flags from Hash" section on the FPGA. Execution of the "Compute Document Score" section can be kept on the host CPU.
 
 
-## Run the Application on the FPGA
 
-For the purposes of this lab, we have implemented the FPGA accelerator with an 8x parallelization factor. It processes 8 input words in parallel, producing 8 output flags in parallel each clock cycle. Each output flag is stored as byte and indicates whether the corresponding word is present in the search array. Since each word requires two calls to the MurmurHash2 function, this means that the accelerator performs 16 hash computations in parallel. In addition, we have optimized the host application to efficiently interact with the parallelized FPGA-accelerator. The result is an application which runs significantly faster, thanks to FPGAs and AWS F1 instances.
+## Identify Device Parallelization Needs
 
-1. Run the following make command for running optimized application on FPGA
+Now that we have analyzed that "Hash" function has potential of accleration on FPGA and overall acceleration goal of (??) has been established, we can also determine what level of parallelization is needed to meet the goals. We need to determine the throughput of hardware function without parallization
 
-   ```bash
-   make run_fpga
-   ```
+### Estimate Hardware Throughput without Parallelization
 
-2. The output is as follows:
+The throughput achievable from kernel can be approximated as:
 
-   ```
-   --------------------------------------------------------------------
-    Executed FPGA accelerated version  |   552.5344 ms   ( FPGA 528.744 ms )
-    Executed Software-Only version     |   3864.4070 ms
-   --------------------------------------------------------------------
-    Verification: PASS
-   ```
+**Thw = (Frequency / Computational Intensity) = (Frequency * max(VINPUT, VOUTPUT) / VOPS)**
 
-Throughput = Total data/Total time = 1.39 GB/552.534ms = 2.516 GB/s
+where:
 
-You can see that by efficiently leveraging FPGA acceleration, the throughput of the application has increased by a factor of 7.  
+* **VINPUT**, **VOUTPUT** represent the volume of input and output data processed respectively.
+* **VOPS** represents the volume of operations processed on the input and output data.
+* **Computational Intensity** of a function is the ratio of the total number of operations to the maximum amount of input and output data.  
 
-3. With FPGA acceleration, processing the entire American Library of Congress would take about 1.65 hours (15TB/2.52GB/s), as opposed to 12.3 hours with a software-only approach.
+**Thw = (Frequency\*1)samples**
+
+Because each sample is 4 bytes of data and computational intensity is 1, the maximum throughput of kernel is: **Thw = (300MHz)\*4B = 1.2GB/s**.
+
+Each word in "Hash" function can be computed in parallel so muliple words can be computed in parallel to improve the acceleration.
+
+
+### Determine How Much Parallelism is Needed
+
+Throuput potential for hash function computing one word is 1.2GB/sec. The following function can determine how much of the parallelism needed to achieve the performance goal. 
+
+Speed-Up = Thw/Tsw = Fmax*Running Time/Vops 
+
+For Hash function, this parallization can be achieved in either by widening the datapath or by using multiple kernel instances. 
+### Determine How Many Samples the Datapath Should be Processing in Parallel
+
+Hash function accesses words from DDR in 
+
+### Determine How Many Kernels Can and Should be Instantiated in the Device
+
+##  Identify Software Application Parallelization Needs
+
+### Minimize CPU Idle Time While the Device Kernels are Running
+
+### Keep the Device Kernels Utilized
+
+### Optimize Data Transfers to and from the Device
+
+
+### Computational Intensity 
 
 ## Architectural spec for Kenel, TArget Performance, Interface Widths, Datapath Widths etc. (TODO)
 
 ## Conclusion
 
-In this lab, you have seen how to profile an application and determine which parts are best suited for FPGA acceleration. You've also experienced that once an accelerator is efficiently implemented, FPGA-accelerated applications on AWS F1 instances execute significantly faster than conventional software-only applications.
+In this lab, you have seen how to profile an application and determine which parts are best suited for FPGA acceleration. We should have good understanding of architectural spec for Kenel, Target Performance, Interface Widths etc. 
 
-In the next lab you will dive deeper into the details of the FPGA-accelerated application and learn some of the fundamental optimization techniques leveraged in this example. In particular, you will discover how to optimize data movements between host and FPGA, how to efficiently invoke the FPGA kernel and how to overlap computation on the host CPU and the FPGA to maximize application performance.
+In the next section, you will use "Methodology for Developing C/C++ Kernels" to create optimized kernel to meet the requirements of the Kenel spec.
 
 ---------------------------------------
 
