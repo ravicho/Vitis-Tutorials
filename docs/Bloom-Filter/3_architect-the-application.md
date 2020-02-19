@@ -72,13 +72,32 @@ Because you only have the function `runOnCPU` to accelerate, you will run the ex
 ## Create budget for Computation on Device
 
 For creating budget of the kernels, let's say we want to use 10k docs with approx 3500 words in each doc. This results into 35M words. Each word is 4Bytes which is equivalent to 35M * 4B = 140 MB. 
+Each "RAVI" function creates flag of unsigned char which results into 35M * 1B = 35 MB.  
 We also need to take into account for moving the data from Host to Device and Device to Host back.
-
-Run PCIe BW : 11 GB/sec
 
 s/w Version is about 358ms which is equivalent to 140 MB/ 358ms = 388MBps 
 
-Let's say we want to accelerate this Applications to 2Gps. Using 300 Mz for device, this is about 
+Let's say we want to accelerate this Applications to 2GBps. To achieve this, all 35M words needs to be processed in 140MB/2GBps = 140MB/2000MBps = 0.07s or 70 ms. 
+
+For 70ms, we have to budget for hash compute and profile score calculation. Assuming, both functions take about half the time. Then we must compute hash function within 35 ms. 
+
+The whole application time should be split and budgeted conceptually based on following
+1. Transferring document data of size 140MB from Host to device DDR using PCIe
+2. Compute the Hash and craete the flags
+3. Transferring flags data of size 35MB from Device to Host using PCIe.
+
+Run PCIe BW : 11 GB/sec
+
+For 1, Using PCIe BW of 11GBps, approximate time for transfer = 140MB/11G = 12ms
+For 3, Using PCIe BW of 11GBps, approximate time for transfer = 35MB/11G = 3ms
+
+This leaves budget of 35ms - 12ms - 3ms = 20ms for Kernel Computation. 
+
+In 20ms, we need to compute 35MB words. Using 300MHz, there are 6M Cycles in 20 ms. If one word is processed in every cycle, then we will need 35M cycles at the best resulting into 35M/300MHz = approx 120ms. To compute processing of 35M in 6M cycles, we will need to process at least 6 words in parallel at the best. 
+
+If we could create kernel to process say 8 words in parallel, then we can be confident to achieve finally performance of 2GBps. 
+
+
 
 
 ## Identify Functions to Accelerate on FPGA
