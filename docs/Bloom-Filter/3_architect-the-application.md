@@ -257,6 +257,41 @@ Based on this analysis, it is only beneficial to accelerate the "Compute Output 
 
 Now that we have analyzed that "Hash" function has potential of accleration on FPGA and overall acceleration goal of (??) has been established, we can also determine what level of parallelization is needed to meet the goals. We need to determine the throughput of hardware function without parallization
 
+Running Original s/w run in cpu_run directory, 
+    Bloom-Filter/cpu_run
+    make run NUM_DOCS=10000    produces following 
+    
+     Total execution time of CPU          |   345.8297 ms
+     Compute Hash processing time         |   308.2708 ms
+     Compute Score processing time        |    37.5588 ms
+ 
+Software Version is about 345ms which is equivalent to 140 MB/ 345ms = approx 400MBps 
+
+We have decided to keep only Compute Hash function in FPGA. This function takes about 308ms in Sotware. 
+
+Let's say we want to accelerate this Applications to 2GBps. To achieve this, all 35M words needs to be processed in 140MB/2GBps = 140MB/2000MBps = 0.07s or 70 ms. 
+
+For 70ms, we have to budget for hash compute and profile score calculation. Assuming, both functions take about half the time. Then we must compute hash function within 35 ms. 
+
+The whole application time should be split and budgeted conceptually based on following
+1. Transferring document data of size 140MB from Host to device DDR using PCIe
+2. Compute the Hash and craete the flags
+3. Transferring flags data of size 35MB from Device to Host using PCIe.
+
+Run PCIe BW : 11 GB/sec
+
+For 1, Using PCIe BW of 11GBps, approximate time for transfer = 140MB/11G = 12ms
+For 3, Using PCIe BW of 11GBps, approximate time for transfer = 35MB/11G = 3ms
+
+This leaves budget of 35ms - 12ms - 3ms = 20ms for Kernel Computation. 
+
+In 20ms, we need to compute 35MB words. Using 300MHz, there are 6M Cycles in 20 ms. If one word is processed in every cycle, then we will need 35M cycles at the best resulting into 35M/300MHz = approx 120ms. To compute processing of 35M in 6M cycles, we will need to process at least 6 words in parallel at the best. 
+
+If we could create kernel to process say 8 words in parallel, then we can be confident to achieve finally performance of 2GBps. 
+
+
+
+
 ### Estimate Hardware Throughput without Parallelization
 
 The throughput achievable from kernel can be approximated as:
