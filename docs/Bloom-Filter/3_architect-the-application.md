@@ -68,6 +68,19 @@ Because you only have the function `runOnCPU` to accelerate, you will run the ex
 
    From a `main` function standpoint, you can see that the CPU spends almost 73% of time in the `runOnCPU` function. In the `runOnCPU` function, there is only one child call, which is the `MurmurHash2` function. Based on execution times from table, you can deduce that around 66% **((8.76/(8.76+4.54))** of time is spent by calls to `MurmurHash2`. Therefore, accelerating the `runOnCPU` function would significantly increase the performance of the application.
 
+
+## Create budget for Computation on Device
+
+For creating budget of the kernels, let's say we want to use 10k docs with approx 3500 words in each doc. This results into 35M words. Each word is 4Bytes which is equivalent to 35M * 4B = 140 MB. 
+We also need to take into account for moving the data from Host to Device and Device to Host back.
+
+Run PCIe BW : 11 GB/sec
+
+s/w Version is about 358ms which is equivalent to 140 MB/ 358ms = 388MBps 
+
+Let's say we want to accelerate this Applications to 2Gps. Using 300 Mz for device, this is about 
+
+
 ## Identify Functions to Accelerate on FPGA
 
 The algorithm can be divided into two sections
