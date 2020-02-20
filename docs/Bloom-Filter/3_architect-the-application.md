@@ -286,9 +286,7 @@ For 3, Using PCIe BW of 11GBps, approximate time for transfer = 35MB/11G = 3ms
 
 This leaves budget of 33ms - 12ms - 3ms = 18ms for Kernel Computation. This is equivalent of 140MB/18ms, about 8GBps. Thus Tgoal = 8GBps 
 
-In 20ms, we need to compute 35MB words. Using 300MHz, there are 5.4M Cycles in 18 ms. If one word is processed in every cycle, then we will need 35M cycles at the best resulting into 35M/300MHz = approx 120ms. To compute processing of 35M words in 5.4M cycles, we will need to process at least 7 words in parallel at the best. 
-
-If we could create kernel to process say 8 words in parallel, then we can be confident to achieve finally performance of 2GBps. 
+In 18ms, we need to compute 35MB words. Using 300MHz, there are 5.4M Cycles in 18 ms. If one word is processed in every cycle, then we will need 35M cycles at the best resulting into 35M/300MHz = approx 120ms. To compute processing of 35M words in 5.4M cycles, we will need to process at least 7 words in parallel at the best. 
 
 
 
@@ -327,7 +325,12 @@ For Hash function, this parallization can be achieved in either by widening the 
 
 Budget for computing Hash function is 18ms. This is equivalent of 140MB/18ms, about 8GBps. Thus Tgoal = 8GBps 
 
-Tgoal = 8Gpps
+Tgoal = 8GBps
+
+Parallelism needed = Tgoal/Thw = 8GBps/1.2GBps = Approx 7 times. 
+
+If we could create kernel to process say 8 words in parallel, then we can be confident to achieve finally performance of 2GBps. 
+
 
 ##  Identify Software Application Parallelization Needs
 
