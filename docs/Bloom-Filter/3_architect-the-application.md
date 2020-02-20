@@ -271,9 +271,9 @@ We have decided to keep only Compute Hash function in FPGA. This function takes 
 
 Let's say we want to accelerate this Applications to 2GBps. To achieve this, all 35M words needs to be processed in 140MB/2GBps = 140MB/2000MBps = 0.07s or 70 ms. 
 
-For 70ms, we have to budget for hash compute and profile score calculation. Assuming, both functions take about half the time. Then we must compute hash function within 35 ms. 
+For 70ms, we have to budget for hash compute and profile score calculation. Since we decided to keep the Compute Score function on software side, it will take about 37ms like during pure software run. This leaves about 70ms - 37ms = approx 33ms time for everything else. 
 
-The whole application time should be split and budgeted conceptually based on following
+The whole application time should be split and budgeted based on following
 1. Transferring document data of size 140MB from Host to device DDR using PCIe
 2. Compute the Hash and craete the flags
 3. Transferring flags data of size 35MB from Device to Host using PCIe.
@@ -283,9 +283,9 @@ Run PCIe BW : 11 GB/sec
 For 1, Using PCIe BW of 11GBps, approximate time for transfer = 140MB/11G = 12ms
 For 3, Using PCIe BW of 11GBps, approximate time for transfer = 35MB/11G = 3ms
 
-This leaves budget of 35ms - 12ms - 3ms = 20ms for Kernel Computation. 
+This leaves budget of 33ms - 12ms - 3ms = 18ms for Kernel Computation. This is equivalent of 140MB/18ms, about 8GBps. Thus Tgoal = 8GBps 
 
-In 20ms, we need to compute 35MB words. Using 300MHz, there are 6M Cycles in 20 ms. If one word is processed in every cycle, then we will need 35M cycles at the best resulting into 35M/300MHz = approx 120ms. To compute processing of 35M in 6M cycles, we will need to process at least 6 words in parallel at the best. 
+In 20ms, we need to compute 35MB words. Using 300MHz, there are 5.4M Cycles in 18 ms. If one word is processed in every cycle, then we will need 35M cycles at the best resulting into 35M/300MHz = approx 120ms. To compute processing of 35M words in 5.4M cycles, we will need to process at least 7 words in parallel at the best. 
 
 If we could create kernel to process say 8 words in parallel, then we can be confident to achieve finally performance of 2GBps. 
 
@@ -306,7 +306,8 @@ where:
 
 **Thw = (Frequency\*1)samples**
 
-Because each sample is 4 bytes of data and computational intensity is 1, the maximum throughput of kernel is: **Thw = (300MHz)\*4B = 1.2GB/s**.
+Because each sample is 4 bytes of data and computational intensity is 1, the maximum throughput of kernel is: 
+**Thw = (300MHz)\*4B = 1.2GB/s**.
 
 Each word in "Hash" function can be computed in parallel so muliple words can be computed in parallel to improve the acceleration.
 
@@ -315,14 +316,17 @@ Each word in "Hash" function can be computed in parallel so muliple words can be
 
 Throuput potential for hash function computing one word is 1.2GB/sec. The following function can determine how much of the parallelism needed to achieve the performance goal. 
 
-Speed-Up = Thw/Tsw = Fmax*Running Time/Vops 
+Speed-Up = Thw/Tsw = Fmax * Running Time/Vops 
+
+Speed-Up = 1.2GBps/308Mps = approx 4 times
 
 For Hash function, this parallization can be achieved in either by widening the datapath or by using multiple kernel instances. 
+
 ### Determine How Many Samples the Datapath Should be Processing in Parallel
 
-Hash function accesses words from DDR in 
+Budget for computing Hash function is 18ms. This is equivalent of 140MB/18ms, about 8GBps. Thus Tgoal = 8GBps 
 
-### Determine How Many Kernels Can and Should be Instantiated in the Device
+Tgoal = 8Gpps
 
 ##  Identify Software Application Parallelization Needs
 
