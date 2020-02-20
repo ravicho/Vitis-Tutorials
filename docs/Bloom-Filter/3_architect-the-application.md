@@ -281,6 +281,7 @@ The whole application time should be split and budgeted based on following
 Run PCIe BW : 11 GB/sec
 
 For 1, Using PCIe BW of 11GBps, approximate time for transfer = 140MB/11G = 12ms
+
 For 3, Using PCIe BW of 11GBps, approximate time for transfer = 35MB/11G = 3ms
 
 This leaves budget of 33ms - 12ms - 3ms = 18ms for Kernel Computation. This is equivalent of 140MB/18ms, about 8GBps. Thus Tgoal = 8GBps 
