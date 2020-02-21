@@ -220,7 +220,7 @@ This code section is a a good candidate for FPGA as the hash function can run fa
 
 
 
-### ### Identify Acceleration Potential of "Compute Document Score" function
+### Identify Acceleration Potential of "Compute Document Score" function
 
 The code for computing the document score is shown below:
 
@@ -255,9 +255,11 @@ Based on this analysis, it is only beneficial to accelerate the "Compute Output 
 
 ## Identify Device Parallelization Needs
 
-Now that we have analyzed that "Hash" function has potential of accleration on FPGA and overall acceleration goal of (??) has been established, we can also determine what level of parallelization is needed to meet the goals. We need to determine the throughput of hardware function without parallization
+Now that we have analyzed that "Hash" function has potential of accleration on FPGA and overall acceleration goal of 2GBps has been established, we can also determine what level of parallelization is needed to meet the goals. We need to determine the throughput of hardware function without parallization first.
 
-Running Original s/w run in cpu_run directory, 
+Let's use 100000 input documents for our calculations. This is equivalent of 35M words with approximately 3500 words per document. 
+
+Rerun Original s/w in cpu_run directory using NUM_DOCS=100000, 
     Bloom-Filter/cpu_run
     make run NUM_DOCS=10000    produces following 
     
@@ -269,7 +271,7 @@ Software Version is about 345ms which is equivalent to 140 MB/ 345ms = approx 40
 
 We have decided to keep only Compute Hash function in FPGA. This function takes about 308ms in Sotware. 
 
-Let's say we want to accelerate this Applications to 2GBps. To achieve this, all 35M words needs to be processed in 140MB/2GBps = 140MB/2000MBps = 0.07s or 70 ms. 
+To achieve acceleration of 2GBps of this Applications, all 35M words needs to be processed in 140MB/2GBps = 140MB/2000MBps = 0.07s or 70 ms. 
 
 For 70ms, we have to budget for hash compute and profile score calculation. Since we decided to keep the Compute Score function on software side, it will take about 37ms like during pure software run. This leaves about 70ms - 37ms = approx 33ms time for everything else. 
 
@@ -332,22 +334,17 @@ Parallelism needed = Tgoal/Thw = 8GBps/1.2GBps = Approx 7 times.
 If we could create kernel to process say 8 words in parallel, then we can be confident to achieve finally performance of 2GBps. 
 
 
-##  Identify Software Application Parallelization Needs
+## Architectural spec for Kenel, TArget Performance, Interface Widths, Datapath Widths etc.
 
-### Minimize CPU Idle Time While the Device Kernels are Running
+At this stage of project, we have identified that we are using only using Hash Function as a kernel to reside on FPGA as an accelerator. This kernel must compute 8 words in parallel to achieve acceleration of 2GBps. 
+Using 8 words in parallel for 35M words will give Throughput of 8*4B*300MHz = 7.6GBps
 
-### Keep the Device Kernels Utilized
+Based on methodology, we will also have data width accessing memory of size 512-bit to achieve DDR bandwidth such that memory doesn't become bottleneck here. 
 
-### Optimize Data Transfers to and from the Device
-
-
-### Computational Intensity 
-
-## Architectural spec for Kenel, TArget Performance, Interface Widths, Datapath Widths etc. (TODO)
 
 ## Conclusion
 
-In this lab, you have seen how to profile an application and determine which parts are best suited for FPGA acceleration. We should have good understanding of architectural spec for Kenel, Target Performance, Interface Widths etc. 
+In this lab, you have seen how to profile an application and determine which parts are best suited for FPGA acceleration. We have extracted requirements of Hash function that must be process 8 words in parallel to achieve our accelration goal.
 
 In the next section, you will use "Methodology for Developing C/C++ Kernels" to create optimized kernel to meet the requirements of the Kenel spec.
 
