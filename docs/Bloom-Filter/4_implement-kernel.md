@@ -92,5 +92,5 @@ hls_stream::buffer(output_flags, data_to_gmem, total_size/(512/8));
 
 
 <p align="center"><b>
-Start the next step: <a href="./data-movement.md"> Data movement between Host and FPGA </a>
+Start the next step: <a href="./5_data-movement.md"> 5. Data movement between Host and FPGA </a>
 </b></p>
