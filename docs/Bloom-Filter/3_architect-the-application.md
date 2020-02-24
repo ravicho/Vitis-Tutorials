@@ -351,5 +351,5 @@ In the next section, you will use "Methodology for Developing C/C++ Kernels" to 
 ---------------------------------------
 
 <p align="center"><b>
-Start the next step: <a href="./4_implement-kernel.md">2: Implement the Kernel</a>
+Start the next step: <a href="./4_implement-kernel.md">4: Implement the Kernel</a>
 </b></p>
