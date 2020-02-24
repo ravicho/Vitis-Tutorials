@@ -73,6 +73,6 @@ You will be using hardware emulation runs for measuring performance in each step
 <p align="center"><sup>Copyright&copy; 2019 Xilinx</sup></p>
 
 <p align="center"><b>
-Start the next step: <a href="./3_architect-the-application.md">2: Accelerate the Application on FPGA</a>
+Start the next step: <a href="./3_architect-the-application.md">2: Architect the Application for FPGA</a>
 </b></p>
 
