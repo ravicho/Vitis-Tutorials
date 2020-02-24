@@ -63,5 +63,5 @@ The labs in this tutorial use:
 <p align="center"><sup>Copyright&copy; 2019 Xilinx</sup></p>
 
 <p align="center"><b>
-Start the next step: <a href="./experience-acceleration.md">2: Experience FPGA Acceleration</a>
+Start the next step: <a href="./2_experience-acceleration.md">2: Experience FPGA Acceleration</a>
 </b></p>
