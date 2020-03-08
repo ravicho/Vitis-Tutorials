@@ -20,7 +20,7 @@ BUILDDIR := ./../build/$(STEP)
 
 ifeq ($(STEP), $(filter $(STEP), single_buffer , split_buffer, sw_overlap ))
 HOST_SRC_FPGA := $(SRCDIR)/compute_score_fpga_kernel.cpp
-BUILDDIR := ./build_dataMovement
+BUILDDIR := ./dataMovement
 endif
 
 ifeq ($(STEP), $(filter $(STEP), noBram , kernel , kernel_16 , stream , multiDDR))
