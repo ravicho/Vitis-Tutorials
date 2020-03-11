@@ -41,6 +41,7 @@ void compute_hash_flags (
   compute_flags: for(int i=0; i<total_size/PARALLELISATION; i++)
   {
     #pragma HLS LOOP_TRIPCOUNT min=1 max=10000
+    #pragma HLS LOOP_TRIPCOUNT min=1 max=10000
     parallel_words_t parallel_entries = word_stream.read();
     parallel_flags_t inh_flags = 0;
 

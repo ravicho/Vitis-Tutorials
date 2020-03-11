@@ -5,6 +5,7 @@ ifeq ($(STEP), sw_overlap)
 ITER   := 16
 endif
 PF     := 8
+CURRENT_DIR = $(PWD)
 
 
 
@@ -18,16 +19,16 @@ endif
 HOST_SRC_CPP := $(SRCDIR)/compute_score_host.cpp
 BUILDDIR := ./../build/$(STEP)
 
-ifeq ($(STEP), $(filter $(STEP), single_buffer , split_buffer, sw_overlap ))
+ifeq ($(STEP), $(filter $(STEP), single_buffer , split_buffer , generic_buffer , sw_overlap ))
 HOST_SRC_FPGA := $(SRCDIR)/compute_score_fpga_kernel.cpp
 BUILDDIR := ./dataMovement
 endif
 
-ifeq ($(STEP), $(filter $(STEP), noBram , kernel , kernel_16 , stream , multiDDR))
+ifeq ($(STEP), $(filter $(STEP), kernel , kernel_16 , stream , multiDDR ))
 HOST_SRC_FPGA := $(SRCDIR)/compute_score_fpga_$(STEP).cpp
 endif
 
-ifeq ($(STEP), $(filter $(STEP), noBram ))
+ifeq ($(STEP), $(filter $(STEP), localbuf ))
 BUILDDIR := ./../build/kernel
 endif
 
@@ -35,24 +36,22 @@ endif
 HOST_SRC_CPP += $(SRCDIR)/MurmurHash2.c
 HOST_SRC_CPP += $(SRCDIR)/xcl2.cpp
 HOST_SRC_CPP += $(SRCDIR)/main.cpp 
-ifeq ($(STEP),noBram)
-HOST_SRC_CPP += $(SRCDIR)/run_noBram.cpp
-else
+
+HOST_SRC_RUN_CPP = $(SRCDIR)/run_single_buffer.cpp
 ifeq ($(STEP),multiDDR)
-HOST_SRC_CPP += $(SRCDIR)/run_sw_overlap_multiDDR.cpp
-else
+HOST_SRC_RUN_CPP = $(SRCDIR)/run_sw_overlap_multiDDR.cpp
+endif
 ifeq ($(STEP),split_buffer)
-HOST_SRC_CPP += $(SRCDIR)/run_split_buffer.cpp
-else
+HOST_SRC_RUN_CPP = $(SRCDIR)/run_split_buffer.cpp
+endif
+ifeq ($(STEP),generic_buffer)
+HOST_SRC_RUN_CPP = $(SRCDIR)/run_generic_buffer.cpp
+endif
 ifeq ($(STEP),sw_overlap)
-HOST_SRC_CPP += $(SRCDIR)/run_sw_overlap.cpp
-else
-HOST_SRC_CPP += $(SRCDIR)/run_single_buffer.cpp
-endif
-endif
-endif
+HOST_SRC_RUN_CPP = $(SRCDIR)/run_sw_overlap.cpp
 endif
 
+HOST_SRC_CPP += $(HOST_SRC_RUN_CPP)
 include common.mk
 
 setup:
@@ -82,6 +81,14 @@ else
 endif
 
 	 
+all :
+	cd $(CURRENT_DIR); make run STEP=kernel TARGET=hw SOLUTION=1
+	cd $(CURRENT_DIR); make run STEP=kernel_16 TARGET=hw SOLUTION=1
+	cd $(CURRENT_DIR); make run STEP=single_buffer SOLUTION=1
+	cd $(CURRENT_DIR); make run STEP=split_buffer SOLUTION=1
+	cd $(CURRENT_DIR); make run STEP=generic_buffer ITER=16 SOLUTION=1
+	cd $(CURRENT_DIR); make run STEP=sw_overlap ITER=16 SOLUTION=1
+	#cd $(CURRENT_DIR); make run STEP=stream TARGET=hw SOLUTION=1
 
 help:
 	@echo  " "
