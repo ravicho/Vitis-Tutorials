@@ -1,4 +1,4 @@
-# Part 2: Data Movement Between the Host and Kernel
+# Data Movement Between the Host and Kernel
 
 ## Step 1: Naive Approach
 
