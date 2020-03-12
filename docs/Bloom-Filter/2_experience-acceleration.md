@@ -28,8 +28,8 @@ Navigate to the `cpu_src` directory and run **make** to generate the executable 
 Run the original C application with the number of documents as the argument and generate the golden output files for comparison purposes using the following commands.
 
    ```
-   cd bloom-filter/design/cpu_src/build
-   ./host cpu 100000
+   cd Bloom-Filter/cpu_src/build
+   ./host 100000
    ```
 
 The generated output compute scores are stored in the `cpu_profile_score` array in the host code, which represents the outputs for the total number of documents specified.
