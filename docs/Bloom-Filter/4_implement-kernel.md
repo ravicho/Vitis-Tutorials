@@ -1,5 +1,5 @@
 
-# Kernel Implementation
+# Kernel Implementation using 8 words in Parallel
 
 Based on previous "Architecting the Application" module, we have established following Kernel requirements to achieve the acceleration goal.
 
@@ -127,9 +127,49 @@ Loading runOnfpga_hw.xclbin
 ```
 
 We have also added functionality in ../referemce_files/run_single_buffer.cpp to track total FPGA Time as well as total application time consumed. 
-- Total FPGA time includes Host to DDR transfer, Compute on FPGA and DDR to host tranfer.
+- Total FPGA time includes Host to DDR transfer, Compute on FPGA and DDR to host tranfer. This can be achieved in 304 ms.
+- Total time of computing 100k documents is about 797 ms.
+
+### Throughput Acheived - Compute 8 words in Parallel
 - Based on the results, Throughput of the Application is 1399MB/797ms = approx 1.75GBs. This is our first attempt to run application on hardware and we have 4x performance results compared to Software Only.
 
+### Resources Utlized 
+
+
+# Kernel Implementation using 16 words in Parallel
+
+In the previous step, you are reading 512-bit input values from DDR and computing 8 words in parallel that uses only 256-bit input values. As you may have noticed, we can also compute 16 words in parallel to make use of all of 512-bits at the same time. 
+
+We can achieve this by using PARALLELISATION=16 in the code. You can use the following steps to compute 16 workds in parallel.
+
+## Run HW on FPGA 
+
+``` make run STEP=kernel_basic TARGET=hw SOLUTION=1 ```
+
+```
+Loading runOnfpga_hw.xclbin
+ Processing 1398.903 MBytes of data
+    Running with a single buffer of 1398.903 MBytes for FPGA processing
+--------------------------------------------------------------------
+ Executed FPGA accelerated version  |   724.0923 ms   ( FPGA 268.346 ms )
+ Executed Software-Only version     |   3086.9720 ms
+--------------------------------------------------------------------
+ Verification: PASS
+
+```
+
+- Total FPGA time includes Host to DDR transfer, Compute on FPGA and DDR to host tranfer. This can be achieved in 304 ms.
+- As expected computing 16 words in parallel, FPGA Time has reduced from 304 ms to 268 ms. 
+
+
+### Throughput Acheived - Compute 8 words in Parallel
+- Based on the results, Throughput of the Application is 1399MB/797ms = approx 1.75GBs. This is our first attempt to run application on hardware and we have 4x performance results compared to Software Only.
+
+### Resources Utlized 
+- Indicate increase in the resources here.
+
+We are going to use 16 words in parallel for computing in the next section since this has better FPGA performance and there are available resources to build the hardware on FPGA.
+ 
 So far, we have focused on building kernel based on recommnended methodology. We will look into some of the host code based optimization in the next section
 
 
