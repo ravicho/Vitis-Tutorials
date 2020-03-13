@@ -161,8 +161,8 @@ int main(int argc, char** argv)
     setupData();
 
     //printf ("Sending data on FPGA  Doc_sizes = %lu\n ", doc_sizes.size());
-    std::cout << "Sending data on FPGA  Doc_sizes " <<  doc_sizes.size() << endl;
-    std::cout << "Input Doc Words " <<  input_doc_words.size() << endl;
+    //std::cout << "Sending data on FPGA  Doc_sizes " <<  doc_sizes.size() << endl;
+    //std::cout << "Input Doc Words " <<  input_doc_words.size() << endl;
     runOnFPGA(
         doc_sizes.data(),
         input_doc_words.data(),
