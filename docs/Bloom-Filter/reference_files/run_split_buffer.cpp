@@ -119,32 +119,32 @@ void runOnFPGA(
  
 	//  Set Kernel Arguments, Read, Enqueue Kernel and Write for first iteration
 		
-                total_size = total_doc_size/2;
-                load_filter=false;
-		kernel.setArg(3, total_size);
-		kernel.setArg(4, load_filter);
-		kernel.setArg(0, subbuf_inh_flags[0]);
-		kernel.setArg(1, subbuf_doc_words[0]);
-		q.enqueueMigrateMemObjects({subbuf_doc_words[0]}, 0, &wordWait, &buffDone); 
-		wordWait.push_back(buffDone);
-		q.enqueueTask(kernel, &wordWait, &krnlDone);
-		krnlWait.push_back(krnlDone);
-		q.enqueueMigrateMemObjects({subbuf_inh_flags[0]}, CL_MIGRATE_MEM_OBJECT_HOST, &krnlWait, &flagDone);
-		flagWait.push_back(flagDone);
+        total_size = total_doc_size/2;
+        load_filter=false;
+	kernel.setArg(3, total_size);
+	kernel.setArg(4, load_filter);
+	kernel.setArg(0, subbuf_inh_flags[0]);
+	kernel.setArg(1, subbuf_doc_words[0]);
+	q.enqueueMigrateMemObjects({subbuf_doc_words[0]}, 0, &wordWait, &buffDone); 
+	wordWait.push_back(buffDone);
+	q.enqueueTask(kernel, &wordWait, &krnlDone);
+	krnlWait.push_back(krnlDone);
+	q.enqueueMigrateMemObjects({subbuf_inh_flags[0]}, CL_MIGRATE_MEM_OBJECT_HOST, &krnlWait, &flagDone);
+	flagWait.push_back(flagDone);
 
 	//  Set Kernel Arguments, Read, Enqueue Kernel and Write for second iteration
-		kernel.setArg(0, subbuf_inh_flags[1]);
-		kernel.setArg(1, subbuf_doc_words[1]);
-		q.enqueueMigrateMemObjects({subbuf_doc_words[1]}, 0, &wordWait, &buffDone); 
-		wordWait.push_back(buffDone);
-		q.enqueueTask(kernel, &wordWait, &krnlDone);
-		krnlWait.push_back(krnlDone);
-		q.enqueueMigrateMemObjects({subbuf_inh_flags[1]}, CL_MIGRATE_MEM_OBJECT_HOST, &krnlWait, &flagDone);
-		flagWait.push_back(flagDone);
+	kernel.setArg(0, subbuf_inh_flags[1]);
+	kernel.setArg(1, subbuf_doc_words[1]);
+	q.enqueueMigrateMemObjects({subbuf_doc_words[1]}, 0, &wordWait, &buffDone); 
+	wordWait.push_back(buffDone);
+	q.enqueueTask(kernel, &wordWait, &krnlDone);
+	krnlWait.push_back(krnlDone);
+	q.enqueueMigrateMemObjects({subbuf_inh_flags[1]}, CL_MIGRATE_MEM_OBJECT_HOST, &krnlWait, &flagDone);
+	flagWait.push_back(flagDone);
 
 	// Wait until all results are copied back to the host before doing the post-processing
-		flagWait[0].wait();
-		flagWait[1].wait();
+	flagWait[0].wait();
+	flagWait[1].wait();
         
 
 	// Compute the profile score in CPU using the in-hash flags computed on the FPGA

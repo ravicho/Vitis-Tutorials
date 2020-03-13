@@ -66,7 +66,7 @@ void runOnFPGA(
 
     double mbytes_total  = (double)(total_doc_size * sizeof(int)) / (double)(1000*1000);
     printf(" Processing %.3f MBytes of data\n", mbytes_total);
-    printf("Running with a single buffer of %.3f MBytes for FPGA processing\n",mbytes_total); 
+    printf("    Running with a single buffer of %.3f MBytes for FPGA processing\n",mbytes_total); 
 
     // Create events for read,compute and write
     
