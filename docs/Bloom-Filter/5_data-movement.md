@@ -1,6 +1,6 @@
 # Data Movement Between the Host and Kernel
 
-## Step 1: Naive Approach
+## Reviewing the Initial Host Code
 
 The initial version of the accelerated application follows the structure of original software version. The entire input buffer is transfered from the host to the FPGA in a single transaction. Then, the FPGA accelerator performs the computation. Lastly, the results are read back from the FPGA to the host before being post-processed. 
 
@@ -26,41 +26,36 @@ The accelerator is architected to process 8 words in parallel at 250Mhz. In the 
 * Number of words/(Clock freq * Parallelization factor in Kernel) = 401022976 / (250\*1000000\*8) = 174.86 ms
 
 
-### Run the Application
+### Run the Application on HW
 
 1. Go to the `makefile` directory and run the make command.
 
     ```bash
-    cd ~/SDAccel-AWS-F1-Developer-Labs/modules/module_02/makefile
+    cd <project>/modules/module_02/makefile
     make run STEP=single_buffer SOLUTION=1
     ```
 
 2. The output is as follows.
 
     ```
+    Processing 1398.903 MBytes of data
+    Running with a single buffer of 1398.903 MBytes for FPGA processing
     --------------------------------------------------------------------
-     Executed FPGA accelerated version  |  1030.6703 ms   ( FPGA 616.349 ms )
-     Executed Software-Only version     |  3694.6240 ms
+    Executed FPGA accelerated version  |   797.8023 ms   ( FPGA 304.580 ms )
+    Executed Software-Only version     |   3167.8370 ms
     --------------------------------------------------------------------
-     Verification: PASS
     ```
-    
-    While this initial version is already 3.5x faster than the software-only version, you can see that is noticeably slower than the optimized version which you ran at then of the previous lab. 
+  
     
 
 ### Profile Summary Analysis
 
-1. Change your working directory to `modules/module_02/build/single_buffer`.
+
+1. Run the following command to look at the Profile Summary Report.
 
     ```bash
-    cd ~/SDAccel-AWS-F1-Developer-Labs/modules/module_02/build/single_buffer
-    ```
-   
-2. Run the following command to look at the Profile Summary Report.
-
-    ```bash
-    sdx_analyze  profile  -f html -i ./profile_summary.csv
-    firefox profile_summary.html
+    cd Vitis-Tutorials/docs/Bloom-Filter/makefile
+    vitis_analyzer ../build/kernel_basic/runOnfpga_hw.xclbin.run_summary
     ```
 
 *  Looking at the *Kernel Execution* section in the report, we see the kernel execution time as 175.173 ms.
@@ -72,20 +67,13 @@ The accelerator is architected to process 8 words in parallel at 250Mhz. In the 
 
 ### Timeline Trace Analysis
 
-1. Run the following commands to view the Timeline Trace report.
-
-    ```bash
-    sdx_analyze trace -f wdb -i ./timeline_trace.csv
-    sdx -workspace workspace -report timeline_trace.wdb
-    ```
-
-2. Zoom in to display the timeline trace report as follows:
+1. Zoom in to display the timeline trace report as follows:
 
 ![](./images/single_buffer_timeline_trace.PNG)
 
 As expected, there is a sequential execution of operations starting from the data transferred from the host to the FPGA, followed by compute in the FPGA and transferring back the results from the FPGA to host.
 
-3. Exit the SDAccel application to return to the terminal.
+2. Exit the vitis_analyzer application to return to the terminal.
 
 ### Conclusion
 
@@ -93,7 +81,7 @@ The Profile Summary and Timeline Trace reports are useful tools to analyze the p
  
 To further improve performance, you will look into overlapping data transfers and compute.
 
-## Step 2: Overlapping Data Transfer and Compute
+## Overlapping Data Transfer and Compute
 
 In the previous step, you noticed a sequential execution of the write, compute, and read (that is, the compute does not start until the entire input is read into the FPGA and similarly, the host read from the FPGA does not start until compute is done).
 
@@ -225,10 +213,10 @@ f. The host waits until the output is read back from the FPGA.
 
 ### Run the Application
 
-1. Go to the `makefile` directory and run the `make` command.
+1. Go to the `makefile` directory and run the make command.
 
     ```bash
-    cd ~/SDAccel-AWS-F1-Developer-Labs/modules/module_02/makefile
+    cd <project>/modules/module_02/makefile
     make run STEP=split_buffer SOLUTION=1
     ```
 
@@ -243,17 +231,11 @@ f. The host waits until the output is read back from the FPGA.
     ```
 
 ### Timeline Trace Analysis
-1. Change your working directory to `modules/module_02/build/split_buffer`.
-
-   ```bash
-   cd ~/SDAccel-AWS-F1-Developer-Labs/modules/module_02/build/split_buffer
-   ```
-   
-2. Run the following commands to view the Timeline Trace report.
+1. Run the following commands to view the Timeline Trace report.
 
     ```bash
-    sdx_analyze trace -f wdb -i ./timeline_trace.csv
-    sdx -workspace workspace -report timeline_trace.wdb
+    cd Vitis-Tutorials/docs/Bloom-Filter/makefile
+    vitis_analyzer ../build/split_buffer/runOnfpga_hw.xclbin.run_summary
     ```
 
 3. Zoom in to display the timeline trace report as follows:
@@ -262,13 +244,20 @@ f. The host waits until the output is read back from the FPGA.
 
 The Timeline Trace confirms that we have achieved the execution schedule that we aspired to obtain: there is an overlap of the read, compute, and write operations between the first and second iterations. The execution time of the first kernel run and the first data read are effectively "hidden" behind the data write time. This results in a faster overall run.
 
-4. Exit the SDAccel application to return to the terminal.
+4. Exit the Vitis application to return to the terminal.
 
 ### Conclusion
 
 The total execution time on the FPGA has been improved by vertue of overlapping computation with data transfers. The execution time of the first kernel run and the first data read have been eliminated.
 
-## Step 3: Overlap of Data Transfer and Compute with Multiple Buffers
+## Optimizing kernel by using local buffer
+Here we can show that there are multiple 64k transfer from host to DDR and not required as we can save the bloom filter coefficients in the local memory.
+
+Show Time line trace -> 
+Copy the xclbinary from new kernel directory to ./dataMovement and rerun the application (only requires running host)
+
+
+## Overlap of Data Transfer and Compute with Multiple Buffers
 
 In the previous step, you split the input buffer into two sub-buffers and overlapped the first compute with the second data transfer. In this step, you will write generic code, so the input data is split and processed in an arbitrary number of iterations to achieve the optimal execution time.
 
