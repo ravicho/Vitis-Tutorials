@@ -43,19 +43,13 @@ The labs in this tutorial use:
 
 ## Tutorial Overview
 
-1. [Brief overview of the Application](overview.md): 
-2. [Experience Acceleration performance vs Software-only version](experience-acceleration.md):
-3. [Accelerating the Appplication](accelerate-the-application.md)():
-4. [Implementing the Kernel](implement-kernel.md):
-5. [Data movement between Host and Kernel](data-movement.md):
+1. [Brief overview of the Application](1_overview.md): This modules provides the brief overview of Bloom filter application and some examples how this application is being used in real world.
+2. [Experience Acceleration performance vs Software-only version](2_experience-acceleration.md): You will profile the Bloom filter application and evaluate which sections are best suited for FPGA acceleration. You will also experience the acceleration potential of by running the application first as a software-only version and then as an optimized FPGA-accelerated version.
+3. [Arhitecting the Appplication](3_architect-the-application.md)():In this lab, the original C++ based application computes scores for the documents using a bloom filter. This lab also discusses setting realistic performance goals for an accelerated application. At the end of this lab, you will have specification of kernel created based on Vitis HLS methodology recommendations.
+4. [Implementing the Kernel](4_implement-kernel.md): You will implement the kernel based on specification from previous lab and will run the compute part of the algorithm on the FPGA
+5. [Data movement between Host and Kernel](5_data-movement.md): You will analyze the performance results of previously generated kernel. Working with a predefined FPGA accelerator, you will experience how to optimize data movements between host and FPGA, how to efficiently invoke the FPGA kernel and how to overlap computation on the CPU and the FPGA to maximize application performance.
 
-[Evaluating the Original Application](original.md): In this lab, the original C++ based application computes scores for the documents using a bloom filter. This lab also discusses setting realistic performance goals for an accelerated application.
-2. [Creating a Vitis Core Development Kit Application from the C Application](baseline_fpga.md): Convert the original C code into a host program and hardware kernel that is called by the host using the OpenCL™ API.
-3. [Optimizing Memory Transfers](localbuf.md): Learn methods for optimizing the hardware kernel for improved memory access. You will learn how to use local cache to efficiently use the FPGA bandwidth.
-4. [Optimizing with Dataflow](dataflow.md): Improve the compute efficiency of your kernel, applying dataflow and streaming to improve the datapath in your kernel.
 
-6. [Optimizing with Multiple DDR Banks](multiddr.md): Modify the makefile for kernel connectivity to DDR banks and modify the host program to properly allocate the input documents to different DDR Banks.
-7. [Running the Accelerator in Hardware](runningonhardware.md): All the previous steps have been run in Hardware Emulation mode. Here you run the application on the acceleration hardware.
 </br>
 <hr/>
 <p align= center><b><a href="/README.md">Return to Main Page</a> — <a href="/docs/vitis-getting-started/">Return to Getting Started Pathway</a></b></p>
