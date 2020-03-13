@@ -39,11 +39,13 @@ The accelerator is architected to process 8 words in parallel at 250Mhz. In the 
 
     ```
     Processing 1398.903 MBytes of data
-    Running with a single buffer of 1398.903 MBytes for FPGA processing
+        Running with a single buffer of 1398.903 MBytes for FPGA processing
     --------------------------------------------------------------------
-    Executed FPGA accelerated version  |   797.8023 ms   ( FPGA 304.580 ms )
-    Executed Software-Only version     |   3167.8370 ms
+    Executed FPGA accelerated version  |   777.5133 ms   ( FPGA 275.208 ms )
+    Executed Software-Only version     |   3198.4977 ms
     --------------------------------------------------------------------
+    Verification: PASS
+
     ```
   
     
@@ -223,11 +225,14 @@ f. The host waits until the output is read back from the FPGA.
 2. The output is as follows:
 
     ```
+    Processing 1398.903 MBytes of data
+    Splitting data in 2 sub-buffers of 699.452 MBytes for FPGA processing
     --------------------------------------------------------------------
-     Executed FPGA accelerated version  |   942.3678 ms   ( FPGA 564.939 ms )
-     Executed Software-Only version     |   3640.0865 ms
+    Executed FPGA accelerated version  |   746.4979 ms   ( FPGA 242.726 ms )
+    Executed Software-Only version     |   3116.0761 ms
     --------------------------------------------------------------------
-     Verification: PASS
+    Verification: PASS
+
     ```
 
 ### Timeline Trace Analysis
@@ -394,11 +399,13 @@ e. The host waits until the output of each iteration is read back to the host.
 4. The output with `ITER` 16 is as follows.
 
     ```
+    Processing 1398.907 MBytes of data
+    Splitting data in 16 sub-buffers of 87.432 MBytes for FPGA processing
     --------------------------------------------------------------------
-     Executed FPGA accelerated version  |   899.2955 ms   ( FPGA 515.489 ms )
-     Executed Software-Only version     |   3639.3084 ms
+    Executed FPGA accelerated version  |   696.9357 ms   ( FPGA 223.836 ms )
+    Executed Software-Only version     |   3101.3576 ms
     --------------------------------------------------------------------
-     Verification: PASS
+    Verification: PASS
     ```
 
 ### Timeline Trace Analysis
@@ -510,11 +517,14 @@ b. Block the host only if the hash function of the words are still not computed 
 2. The output is as follows.
 
     ```
+    Processing 1398.907 MBytes of data
+    Splitting data in 16 sub-buffers of 87.432 MBytes for FPGA processing
     --------------------------------------------------------------------
-    Executed FPGA accelerated version  |   552.5344 ms   ( FPGA 528.744 ms )
-    Executed Software-Only version     |   3864.4070 ms
+    Executed FPGA accelerated version  |   457.1986 ms   ( FPGA 219.257 ms )
+    Executed Software-Only version     |   3203.9719 ms
     --------------------------------------------------------------------
-    Verification: PASS
+ Verification: PASS
+
     ```
 
 ### Timeline Trace Analysis
