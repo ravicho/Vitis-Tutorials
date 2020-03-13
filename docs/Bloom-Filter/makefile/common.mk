@@ -1,7 +1,7 @@
 
 ./$(BUILDDIR)/runOnfpga_$(TARGET).xo: $(SRCDIR)/hls_stream_utils.h $(HOST_SRC_FPGA)
 	v++ -c -g -t $(TARGET) -R 1 -k runOnfpga \
-		--platform xilinx_u200_xdma_201830_2 \
+		--platform $(PLATFORM) \
                 --profile_kernel data:all:all:all \
                 --profile_kernel stall:all:all:all \
 		--save-temps \
@@ -16,7 +16,7 @@
 ifeq ($(STEP),multiDDR)
 ./$(BUILDDIR)/runOnfpga_$(TARGET).xclbin: ./$(BUILDDIR)/runOnfpga_$(TARGET).xo
 	v++ -l -g -t $(TARGET) -R 1 \
-		--platform xilinx_u200_xdma_201830_2 \
+		--platform $(PLATFORM) \
                 --profile_kernel data:all:all:all \
                 --profile_kernel stall:all:all:all \
 		--temp_dir ./$(BUILDDIR)/temp_dir \
@@ -31,7 +31,7 @@ else
 
 ./$(BUILDDIR)/runOnfpga_$(TARGET).xclbin: ./$(BUILDDIR)/runOnfpga_$(TARGET).xo
 	v++ -l -g -t $(TARGET) -R 1 \
-		--platform xilinx_u200_xdma_201830_2 \
+		--platform $(PLATFORM) \
                 --profile_kernel data:all:all:all \
                 --profile_kernel stall:all:all:all \
 		--temp_dir ./$(BUILDDIR)/temp_dir \

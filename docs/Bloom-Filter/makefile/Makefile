@@ -6,7 +6,7 @@ ITER   := 16
 endif
 PF     := 8
 CURRENT_DIR = $(PWD)
-
+PLATFORM :=/proj/xbuilds/2020.1_daily_latest/internal_platforms/xilinx_u200_xdma_201830_2/xilinx_u200_xdma_201830_2.xpfm
 
 
 ifeq ($(SOLUTION),1)
@@ -20,11 +20,12 @@ HOST_SRC_CPP := $(SRCDIR)/compute_score_host.cpp
 BUILDDIR := ./../build/$(STEP)
 
 ifeq ($(STEP), $(filter $(STEP), single_buffer , split_buffer , generic_buffer , sw_overlap ))
-HOST_SRC_FPGA := $(SRCDIR)/compute_score_fpga_kernel.cpp
+HOST_SRC_FPGA := 
 BUILDDIR := ./dataMovement
+NOBUILD = 1
 endif
 
-ifeq ($(STEP), $(filter $(STEP), kernel , kernel_16 , stream , multiDDR ))
+ifeq ($(STEP), $(filter $(STEP), kernel_basic , kernel , kernel_16 , stream , multiDDR ))
 HOST_SRC_FPGA := $(SRCDIR)/compute_score_fpga_$(STEP).cpp
 endif
 
@@ -65,8 +66,13 @@ setup:
 
 build: host
 
-#run: build 
+ifeq ($(NOBUILD),1)
+	echo " Copying runOnfpga_$(TARGET).* files and host exectutable to $(BUILDDIR) " ;
+	cp ../build/kernel_16/runOnfpga_$(TARGET).* $(BUILDDIR)
+run: build 
+else
 run: build ./$(BUILDDIR)/runOnfpga_$(TARGET).xclbin
+endif
 	mkdir -p $(BUILDDIR)
 	if [ -f runOnfpga_$(TARGET).xclbin ]; \
 	then mv runOnfpga_$(TARGET).* $(BUILDDIR) ; \
@@ -82,6 +88,7 @@ endif
 
 	 
 all :
+	cd $(CURRENT_DIR); make run STEP=kernel_basic TARGET=hw SOLUTION=1
 	cd $(CURRENT_DIR); make run STEP=kernel TARGET=hw SOLUTION=1
 	cd $(CURRENT_DIR); make run STEP=kernel_16 TARGET=hw SOLUTION=1
 	cd $(CURRENT_DIR); make run STEP=single_buffer SOLUTION=1
