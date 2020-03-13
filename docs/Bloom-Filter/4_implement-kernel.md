@@ -177,3 +177,9 @@ So far, we have focused on building kernel based on recommnended methodology. We
 <p align="center"><b>
 Start the next step: <a href="./5_data-movement.md"> 5. Data movement between Host and FPGA </a>
 </b></p>
+
+</br>
+<hr/>
+<p align="center"><b><a href="/docs/vitis-getting-started/">Return to Getting Started Pathway</a> — <a href="./README.md">Return to Start of Tutorial</a></b></p>
+
+<p align="center"><sup>Copyright&copy; 2019 Xilinx</sup></p>

@@ -552,3 +552,9 @@ In the next module, you will create and optimize a two-dimensional convolution a
 <p align="center"><b>
 Start the second module: <a href="../module_03/README.md">Methodology for Optimizing Accelerated FPGA Applications</a>
 </b></p>
+
+</br>
+<hr/>
+<p align="center"><b><a href="/docs/vitis-getting-started/">Return to Getting Started Pathway</a> — <a href="./README.md">Return to Start of Tutorial</a></b></p>
+
+<p align="center"><sup>Copyright&copy; 2019 Xilinx</sup></p>

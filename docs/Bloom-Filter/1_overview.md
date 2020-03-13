@@ -43,6 +43,9 @@ Example:
 
 In this step, you will build and run this application to create baseline performance data for the original, non-accelerated application.
 
+<p align="center"><b>
+Start the next step: <a href="./2_experience-acceleration.md">2: Experience the Acceleration </a>
+</b></p>
 
 </br>
 <hr/>
@@ -50,6 +53,3 @@ In this step, you will build and run this application to create baseline perform
 
 <p align="center"><sup>Copyright&copy; 2019 Xilinx</sup></p>
 
-<p align="center"><b>
-Start the next step: <a href="./2_experience-acceleration.md">2: Experience the Acceleration </a>
-</b></p>

@@ -353,3 +353,9 @@ In the next section, you will use "Methodology for Developing C/C++ Kernels" to 
 <p align="center"><b>
 Start the next step: <a href="./4_implement-kernel.md">4: Implement the Kernel</a>
 </b></p>
+
+</br>
+<hr/>
+<p align="center"><b><a href="/docs/vitis-getting-started/">Return to Getting Started Pathway</a> — <a href="./README.md">Return to Start of Tutorial</a></b></p>
+
+<p align="center"><sup>Copyright&copy; 2019 Xilinx</sup></p>
