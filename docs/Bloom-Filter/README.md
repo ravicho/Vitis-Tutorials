@@ -49,6 +49,9 @@ The labs in this tutorial use:
 4. [Implementing the Kernel](4_implement-kernel.md): You will implement the kernel based on specification from previous lab and will run the compute part of the algorithm on the FPGA
 5. [Data movement between Host and Kernel](5_data-movement.md): You will analyze the performance results of previously generated kernel. Working with a predefined FPGA accelerator, you will experience how to optimize data movements between host and FPGA, how to efficiently invoke the FPGA kernel and how to overlap computation on the CPU and the FPGA to maximize application performance.
 
+<p align="center"><b>
+Start the next step: <a href="./2_experience-acceleration.md">2: Experience FPGA Acceleration</a>
+</b></p>
 
 </br>
 <hr/>
@@ -56,6 +59,3 @@ The labs in this tutorial use:
 </br>
 <p align="center"><sup>Copyright&copy; 2019 Xilinx</sup></p>
 
-<p align="center"><b>
-Start the next step: <a href="./2_experience-acceleration.md">2: Experience FPGA Acceleration</a>
-</b></p>
