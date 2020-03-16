@@ -66,10 +66,73 @@ This pragma will let function run as indepndent processes and ability to run the
 
 ## Micro Architecture Implementation
 
-Now we have the top level function, runOnfpga function updated with proper datawidths and interface type, we must update the compute_hash_flags to process multiple words in parallel. 
-- compute_hash_flags receives stream on 32-bit input values from stream, word_stream. 
+Now we have the top level function, runOnfpga function updated with proper datawidths and interface type, we need to identify the loops for optimizaion for improving latency and throughput. 
+
+1. Function "runOnfpga" has read_bloom_filter nested for loop that reads the bloom filter values and save into bloom_filter_local array. 
+
+For the following code, "#pragma HLS PIPELINE II=1" is added to receive  bloom filter data and make 8 copies to be used for 8 parallel computation in function "compute_hash_flags"
+
+The following code will be executed in about 64k cycles as bloom_filter_size is fixed to 64k and the code is pipelined with initition interval of 1. 
+
+```cpp
+
+    if(load_filter==true)
+    {
+      read_bloom_filter: for(int index=0; index<bloom_filter_size; index++) {
+        #pragma HLS PIPELINE II=1
+        unsigned int tmp = bloom_filter[index];
+        for (int j=0; j<PARALLELISATION; j++) {
+          bloom_filter_local[j][index] = tmp;
+        }
+      }
+    }
+
+```
+
+2. Function "compute_hash_flags" for loop is rearchitected into nested loops to input 512-bit of data from DDR and process 8 words of data equal to 256-bits.
 
 You don't need to update the code manually to create 8 copies of compute_hash_flags function. Vitis HLS compiler can perform this functionality by making use of UNROLL pragma. 
+
+For the following code, #pragma HLS LOOP_TRIPCOUNT" is added for reporting purposes. When this function is synthesized, you can determine the latency of this function if this matches the expectations. Since "Compute_hash_flags" function is part of the "#pragma HLS DATAFLOW" so this function should honor initiation interval of 1. 
+
+The inner for loop will have some latency about 10-12 cycles and outer loop is being invoked every cycle. So to match the expectations of the function, expected latency reported should be close to 10000. This way we can be confident that we have achieved the desiered performance of the kernel.
+
+
+```cpp
+void compute_hash_flags (
+        hls::stream<parallel_flags_t>& flag_stream,
+        hls::stream<parallel_words_t>& word_stream,
+        unsigned int                   bloom_filter_local[PARALLELISATION][bloom_filter_size],
+        unsigned int                   total_size)
+{
+  compute_flags: for(int i=0; i<total_size/PARALLELISATION; i++)
+  {
+    #pragma HLS LOOP_TRIPCOUNT min=1 max=10000
+    parallel_words_t parallel_entries = word_stream.read();
+    parallel_flags_t inh_flags = 0;
+
+    for (unsigned int j=0; j<PARALLELISATION; j++)
+    {
+      #pragma HLS UNROLL
+      unsigned int curr_entry = parallel_entries(31+j*32, j*32);
+      unsigned int frequency = curr_entry & 0x00ff;
+      unsigned int word_id = curr_entry >> 8;
+      unsigned hash_pu = MurmurHash2(word_id, 3, 1);
+      unsigned hash_lu = MurmurHash2(word_id, 3, 5);
+      bool doc_end= (word_id==docTag);
+      unsigned hash1 = hash_pu&hash_bloom;
+      bool inh1 = (!doc_end) && (bloom_filter_local[j][ hash1 >> 5 ] & ( 1 << (hash1 & 0x1f)));
+      unsigned hash2=(hash_pu+hash_lu)&hash_bloom;
+      bool inh2 = (!doc_end) && (bloom_filter_local[j][ hash2 >> 5 ] & ( 1 << (hash2 & 0x1f)));
+
+      inh_flags(7+j*8, j*8) = (inh1 && inh2) ? 1 : 0;
+    }
+
+    flag_stream.write(inh_flags);
+  }
+}
+
+```
 
 ### Run SW Emulation 
 
