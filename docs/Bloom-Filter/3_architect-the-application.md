@@ -291,12 +291,13 @@ Each word in "Hash" function can be computed in parallel so muliple words can be
 
 ### Determine How Many Samples the Datapath Should be Processing in Parallel
 
-We must have about 8 "Murmurhash2" functions to meet the goal of 4 GBps. Since each word is computed by 2 of these function calls, we should process at least 4 words in parallel. 
+We must have about 8 "Murmurhash2" functions to meet the goal of 4 GBps. Each word calls this function twice and processing 4 words in parallel will use 8 of "Murmurhash2" function.
 
 The above theoratical calculations are based on idealistic scenario and memory bottlenecks are not considered. As the data will be accessed from host to DDR and read at the same time by Kenel, we should plan for process even more words to give extra margin for memory bottnecks. 
 
 If we could create kernel to process say 8 words in parallel, then we can be confident to achieve overall application performance of 2GBps. 
 
+Also, in the forthcoming sections we are going to implement the kernel and host code. First we will analyze the results by keeping compute score and hash function in sequential mode. Once we establish the working environment, then we can implement the parallelism between by updating the host code. 
 
 ## Architectural spec for Kenel, TArget Performance, Interface Widths, Datapath Widths etc.
 
