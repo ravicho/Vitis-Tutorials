@@ -228,7 +228,7 @@ In most FPGA-accelerated systems, the maximum achievable throughput is limited b
 ### Identifying Performance Bottlenecks
 In a purely sequential application, performance bottlenecks can be easily identified by looking at profiling reports. However, most real-life applications are multi-threaded and it is important to the take the effects of parallelism in consideration when looking for performance bottlenecks.
 
-![](./images/Architect1.PNG =50x50) 
+![](./images/Architect1.PNG) 
 
 For visualization perspective, code snippets reviwed above are used as function blocks.
 
