@@ -152,7 +152,7 @@ This code section is a a good candidate for FPGA as the hash function can run fa
 
 
 
-### Evaluating the second for loop in runCPU function that computes "Profile Score"
+### Evaluating the second for loop in runCPU function that computes "Compute Score"
 
 The code for computing the document score is shown below:
 
@@ -204,9 +204,6 @@ Software Version is about 345ms which is equivalent to 1400 MB/ 3450ms = approx 
 
 We have decided to keep only Compute Hash function in FPGA. This function takes about 3450ms in Software. 
 
-To achieve acceleration of 3GBps of this Applications, all 350M words needs to be processed in 1400MB/4GBps = 1400MB/3000MBps = 0.466s or 466 ms. 
-
-
 
 ### Determine the Maximum Achievable Throughput
 In most FPGA-accelerated systems, the maximum achievable throughput is limited by the PCIe® bus. The PCIe performance is influenced by many different aspects, such as motherboard, drivers, targeted shell, and transfer sizes. The Vitis core development kit provides a utility, `xbutil` and you can run the `xbutil dmatest` command to measure the maximum PCIe bandwidth it can achieve. The throughput on your design target cannot exceed this upper limit.
@@ -233,39 +230,35 @@ In a purely sequential application, performance bottlenecks can be easily identi
 ![](./images/Architect1.PNG) 
 
 For visualization perspective, code snippets reviwed above are used as function blocks.
-"Hash" block in hardware can be executed in parallel of couse at the expense of extra resources. Output of blocks "Hash" is fed to block "Profile Score" to calculate the score of each document. 
+"Hash" block in hardware can be executed in parallel of couse at the expense of extra resources. Output of blocks "Hash" is fed to block "Compute Score" to calculate the score of each document. 
 
 
 In above visualization, the performance of the application will be determined based on the slowest block . 
 
 In Software, 
   - Hash compute blocks are calculated for all the words up front and output flags are set in local memory. Each of the loops in Hash compute blocks are run sequentially.
-  - Once all hashes have computed, only then another for loop is called for all the documents to calculate the profile score. 
+  - Once all hashes have computed, only then another for loop is called for all the documents to calculate the Compute Score. 
 
 In FPGA, 
-  - We dont need to send all the words together to hash function and then calculate the profile score. In fact, we can send smaller sets of data and calculate hash functions.
-  - So we dont really need to calculate all the flags before starting to execute block "Profile Score". The advantage of this implemetation can also enable executing block "profile score" run in parallel to hash function as well. 
-  - Hashes and calculating profile scores codes can be executed in parallel. Based on above analysis, Hash functions are good candidate for computation on FPGA and Profile score calculation can be carried out on Host. Hash functions can compute the flags based on 2nd set of words blocks while profile score can be calculated on the 1st set of flags computed by Hash functions. We can take advantage of effectively running Hash block and profile block as parallel to further improve the performance. 
+  - We dont need to send all the words together to hash function and then calculate the Compute Score. In fact, we can send smaller sets of data and calculate hash functions.
+  - So we dont really need to calculate all the flags before starting to execute block "Compute Score". The advantage of this implemetation can also enable executing block "Compute Score" run in parallel to hash function as well. 
+  - Hashes and calculating Compute Scores codes can be executed in parallel. Based on above analysis, Hash functions are good candidate for computation on FPGA and Compute Score calculation can be carried out on Host. Hash functions can compute the flags based on 2nd set of words blocks while Compute Score can be calculated on the 1st set of flags computed by Hash functions. We can take advantage of effectively running Hash block and profile block as parallel to further improve the performance. 
 
 
 Running the aplication on FPGA also adds additional delay in tranferring the data from host to device memory and reading it back. The whole application time should be split and budgeted based on following
-1. Transferring document data of size 140MB from Host to device DDR using PCIe
-2. Compute the Hashes and calculate the profile score. 
-3. Transferring flags data of size 350MB from Device to Host using PCIe.
+1. Transferring document data of size 1400MB from Host to device DDR using PCIe. Using PCIe BW of 9GBps, approximate time for transfer = 1400MB/9G = 155ms
+2. Compute the Hashes on FPGA
+3. Transferring flags data of size 350MB from Device to Host using PCIe. Using PCIe BW of 9GBps, approximate time for transfer = 350MB/9G = 39ms. This data transfer can be carried out in parallel with computing hash functons.
+4. Calculate the Compute Score once all the flags are available from FPGA. This takes about 370ms on CPU 
 
-For 1, Using PCIe BW of 9GBps, approximate time for transfer = 1400MB/9G = 155ms
-
-For 2, Compute the Hashes can be carried on FPGA and Profile score calculations can be calculated on Software in parallel.
-
-For 3, Using PCIe BW of 9GBps, approximate time for transfer = 350MB/9G = 39ms. This data transfer can be carried out in parallel with computing hash functons.
-
-Transferring data of size 1400BM to FPGA device memory and tranferring data of size 350MB can have some overlap with the Hash compute. These are not small durations while comparing with the compute times of Hashes. But we don't need to send all the words data to FPGA to start with and tranferring data from device, compute and tranferring data back to host can also execute in parallel. 
-
-Since tranferring flags is relatively small compared to compute times, this time can be pretty much hidden with Hash compute. So the application can somewhat look like following : 
+So the application conceptually can look like following : 
 
 ![](./images/Architect2.PNG) 
 
-This leaves budget of 466ms - 155ms = 311ms for Kernel Computation. This is equivalent of 1400MB/311ms, about 4.5GBps. Thus Tgoal = 4.5GBps 
+The performance of the system will be determined by the slowest block of your system. In this case, we are performing Compute Score on CPU and it takes about 370ms. Even if Hashes can be computed hypothetical in no time, the overall application will take at least 370ms. This should be our goalpoast for achieving perforamnce. 
+
+
+In reality, transferring data from host to FPGA, Hashes compute and transferring data from FPGA to host will take some time and at the best we can hide within the time it takes to compute the score. We can establish target to about calculating the compute score in about 400ms which is equivalent of 1400MB/400ms = approx 3.5GBs
 
 
 ### Estimate Hardware Throughput without Parallelization
@@ -300,26 +293,24 @@ Each word in "Hash" function can be computed in parallel so muliple words can be
 
 **Parallelism Needed = Tgoal/Thw**
 
-**Parallelism Needed = 4.5GBps/600MBps** = approx 8 times. 
+**Parallelism Needed = 3.5GBps/600MBps** = approx 6 times. 
 
 
 ### Determine How Many Samples the Datapath Should be Processing in Parallel
 
 We must have about 8 "Murmurhash2" functions to meet the goal of 4 GBps. Each word calls this function twice and processing 4 words in parallel will use 8 of "Murmurhash2" function.
 
-The above theoratical calculations are based on idealistic scenario and memory bottlenecks are not considered. As the data will be accessed from host to DDR and read at the same time by Kenel, we should plan for process even more words to give extra margin for memory bottnecks. 
+The above theoratical calculations are based on idealistic scenario and memory bottlenecks are not considered. As the data will be accessed from host and Kenel at the same time, we should plan for process even more words to give extra margin for memory bottnecks. 
 
 If we could create kernel to process say 8 words in parallel, then we can be confident to achieve overall application performance of 2GBps. 
 
-Also, in the forthcoming sections we are going to implement the kernel and host code. First we will analyze the results by keeping hash functions and data transfer from host to kernel in sequential mode. Once we implment the kernel that matches our defined spec, we can then implement the parallelism of tranferring the data and computing the hash function by updating the host code. 
+Also, in the forthcoming sections we are going to implement the kernel and host code. First we will analyze the results by keeping hash functions on FPGA and Compute Score on CPU to be proecessed in sequential mode. Once we implment the kernel that matches our defined spec, we can introduce parallelism between Hashes and Compute Score functions and thus improve the performance
 
 ## Architectural spec for Kenel, TArget Performance, Interface Widths, Datapath Widths etc.
 
-At this stage of project, we have identified that we are using only using Hash Function as a kernel to reside on FPGA as an accelerator. This kernel must compute 8 words in parallel to achieve acceleration of 2GBps. 
-Using 8 words in parallel for 35M words will give Throughput of 8*4B*300MHz = 7.6GBps
+At this stage of project, we have identified that we are planning to have 8 words process the Hashes in parallel. 
 
 Based on methodology, we will also have data width accessing memory of size 512-bit to achieve DDR bandwidth such that memory doesn't become bottleneck here. 
-
 
 ## Next Step
 In this lab, you have seen how to profile an application and determine which parts are best suited for FPGA acceleration. We have extracted requirements of Hash function that must be process 8 words in parallel to achieve our accelration goal.
