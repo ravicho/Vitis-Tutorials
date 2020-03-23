@@ -19,9 +19,9 @@ Under Bloom-filter/cpu_src, main funcion calls runOnCPU function. This function 
 
 2. The output is as follows.
     ```
- Total execution time of CPU          |   3450.8297 ms
- Compute Hash processing time         |   3080.2708 ms
- Compute Score processing time        |    370.5588 ms
+    Total execution time of CPU          |   3450.8297 ms
+    Compute Hash processing time         |   3080.2708 ms
+    Compute Score processing time        |    370.5588 ms
     --------------------------------------------------------------------
     ```
 
@@ -198,8 +198,8 @@ Rerun Original s/w in cpu_run directory using NUM_DOCS=100000,
     Total execution time of CPU          |   3450.8297 ms
     Compute Hash processing time         |   3080.2708 ms
     Compute Score processing time        |    370.5588 ms
-    --------------------------------------------------------------------
-    ```
+    ------------------------------------------------------------
+
 Software Version is about 345ms which is equivalent to 1400 MB/ 3450ms = approx 400MBps 
 
 We have decided to keep only Compute Hash function in FPGA. This function takes about 3450ms in Software. 
@@ -232,14 +232,14 @@ In a purely sequential application, performance bottlenecks can be easily identi
 
 For visualization perspective, code snippets reviwed above are used as function blocks.
 
-In above visualization, the performance of the application will be determined based on the slowest function . "Hash" block in hardware can be executed in parallel of couse at the expense of extra resources. Output of block "Hash" is fed to block "Profile Score" to calculate the score of each document. 
+In above visualization, the performance of the application will be determined based on the slowest block . "Hash" block in hardware can be executed in parallel of couse at the expense of extra resources. Output of blocks "Hash" is fed to block "Profile Score" to calculate the score of each document. 
 
 In Software, 
   - Each of the loops are run sequentially. Hash functions are calculated for all the words up front and output flags are set in local memory.
   - Once all hash functions have computed, only then another for loop is called for all the documents to calculate the profile score. 
 
-In FPGA, we dont need to send all the words together to hash function and then calculate the profile score. In fact, we can send smaller sets of data and calculate hash functions. So we dont really need to calculate all the flags before starting to execute block "Profile Score? The advantage of this implemetation can also enable executing block "profile score" run in parallel to hash function as well. 
-Hash functions can execute 2nd set of words blocks and profile score can be calculated on the 1st set of words and so on. We can take advantage of effectively running Hash block and profile block as parallel and further improve the performance. 
+In FPGA, we dont need to send all the words together to hash function and then calculate the profile score. In fact, we can send smaller sets of data and calculate hash functions. So we dont really need to calculate all the flags before starting to execute block "Profile Score". The advantage of this implemetation can also enable executing block "profile score" run in parallel to hash function as well. 
+Hash functions can compute the flags based on 2nd set of words blocks and profile score can be calculated on the 1st set of flags computed by Hash functions. We can take advantage of effectively running Hash block and profile block as parallel to further improve the performance. 
 
 
 The whole application time should be split and budgeted based on following
@@ -249,7 +249,7 @@ The whole application time should be split and budgeted based on following
 
 For 1, Using PCIe BW of 11GBps, approximate time for transfer = 1400MB/11G = 120ms
 
-For 3, Using PCIe BW of 11GBps, approximate time for transfer = 350MB/11G = 30ms. But this can be overlapped with compute as stated above. 
+For 3, Using PCIe BW of 11GBps, approximate time for transfer = 350MB/11G = 30ms. This data transfer can be carried out in paralle with computing hash functons. 
 
 This leaves budget of 470ms - 120ms = 350ms for Kernel Computation. This is equivalent of 1400MB/350ms, about 4GBps. Thus Tgoal = 4GBps 
 
