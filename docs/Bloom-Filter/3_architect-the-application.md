@@ -230,10 +230,7 @@ In a purely sequential application, performance bottlenecks can be easily identi
 ![](./images/Architect1.PNG) 
 
 For visualization perspective, code snippets reviwed above are used as function blocks.
-"Hash" block in hardware can be executed in parallel of couse at the expense of extra resources. Output of blocks "Hash" is fed to block "Compute Score" to calculate the score of each document. 
-
-
-In above visualization, the performance of the application will be determined based on the slowest block . 
+Two "Hash" functions in hardware can be executed in parallel of couse at the expense of extra resources. Output of blocks "Hash" is fed to block "Compute Score" to calculate the score of each document. 
 
 In Software, 
   - Hash compute blocks are calculated for all the words up front and output flags are set in local memory. Each of the loops in Hash compute blocks are run sequentially.
@@ -244,6 +241,7 @@ In FPGA,
   - So we dont really need to calculate all the flags before starting to execute block "Compute Score". The advantage of this implemetation can also enable executing block "Compute Score" run in parallel to hash function as well. 
   - Hashes and calculating Compute Scores codes can be executed in parallel. Based on above analysis, Hash functions are good candidate for computation on FPGA and Compute Score calculation can be carried out on Host. Hash functions can compute the flags based on 2nd set of words blocks while Compute Score can be calculated on the 1st set of flags computed by Hash functions. We can take advantage of effectively running Hash block and profile block as parallel to further improve the performance. 
 
+The performance of the system will be determined by the slowest block of your system. In this case, we are performing Compute Score on CPU and it takes about 370ms. Even if Hashes can be computed hypothetical in no time, the overall application will take at least 370ms. This should be our goalpoast for achieving perforamnce. 
 
 Running the aplication on FPGA also adds additional delay in tranferring the data from host to device memory and reading it back. The whole application time should be split and budgeted based on following
 1. Transferring document data of size 1400MB from Host to device DDR using PCIe. Using PCIe BW of 9GBps, approximate time for transfer = 1400MB/9G = 155ms
@@ -255,10 +253,7 @@ So the application conceptually can look like following :
 
 ![](./images/Architect2.PNG) 
 
-The performance of the system will be determined by the slowest block of your system. In this case, we are performing Compute Score on CPU and it takes about 370ms. Even if Hashes can be computed hypothetical in no time, the overall application will take at least 370ms. This should be our goalpoast for achieving perforamnce. 
-
-
-In reality, transferring data from host to FPGA, Hashes compute and transferring data from FPGA to host will take some time and at the best we can hide within the time it takes to compute the score. We can establish target to about calculating the compute score in about 400ms which is equivalent of 1400MB/400ms = approx 3.5GBs
+Since Compute score is computed on the CPU and we can't accelerte this further, we can at the best hide the latency of transferring data from host to FPGA, Hashes compute and transferring data from FPGA to host. These can be carried out in parallel with Hash functions. We do need inital data to be sent to kernel before Hash can be calculated and also the last set of Compute Scores to be calculated on CPU which can't be overlapped with compute of Hashes. So we can set the goal of computing the Compute score of 100000 documents closer to 400ms which is equivalent of 1400MB/400ms = approx 3.5GBs
 
 
 ### Estimate Hardware Throughput without Parallelization
@@ -298,7 +293,7 @@ Each word in "Hash" function can be computed in parallel so muliple words can be
 
 ### Determine How Many Samples the Datapath Should be Processing in Parallel
 
-We must have about 8 "Murmurhash2" functions to meet the goal of 4 GBps. Each word calls this function twice and processing 4 words in parallel will use 8 of "Murmurhash2" function.
+We must have about 8 "Murmurhash2" functions to meet the goal of 3.5GBps. Each word calls this function twice and processing 4 words in parallel will use 8 of "Murmurhash2" function.
 
 The above theoratical calculations are based on idealistic scenario and memory bottlenecks are not considered. As the data will be accessed from host and Kenel at the same time, we should plan for process even more words to give extra margin for memory bottnecks. 
 
