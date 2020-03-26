@@ -13,17 +13,21 @@ The original algorithm used for running on CPU was processing word by word. This
  ![](./images/Methodology_HLS_1.PNG)
 
 
-1. To Partition the code into Load-Compute-Store pattern, here are the updates to the original algorithm.
--   Created "runOnfpga" top level function with following arguments 
-    - input words of 512-bit input equivalent to about 16 words. 
-    - output flags of 512-bit output equivalent to ???
-    - bloom_filter for loading coefficients
-    - total number of words to be computed 
+1. The first step of kernel development methodology requires structuring the kernel code into the Load-Compute-Store pattern. This means creating top level function, runOnfpga with:
 
-- Also added #pragmas for HLS 
+    -   Adding Interface Pragmas <- Need to be rmoeved (RAVI)
+    -   Added sub-functions in compute_hash_flags_dataflow for Load, Compute and Store.
+    -   Local arrays or hls::stream variables to pass data between these functions.
+
+"runOnfpga" top level function is configured with the following arguments 
+    - input words of 512-bit input words data.
+    - output flags of 512-bit output flags data.
+    - bloom_filter for loading coefficients.
+    - total number of words to be computed. 
 
 Function "runOnfpga" loads the bloom filter coefficients and calls "compute_hash_flags_dataflow" function which has main functionaly of Load, Compute and Store functions.
 
+- Also added #pragmas for HLS to enable task-level pipelining also known as HLS dataflow. This pragma will instruct the HLS compiler to run all sub-functions of Load-Compute-Store simultaneously, creating a pipeline of concurrently running tasks. 
 
 - For Load part, buffer and resize functions are implemented in "hls_stream_utils.h"
     - Function "buffer" function receives 512-bit input words from memory and creates streams of 512-bit words.
