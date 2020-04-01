@@ -1,19 +1,20 @@
 TARGET := hw
 
 ITER   := 
-ifeq ($(STEP), sw_overlap)
+ifeq ($(STEP), $(filter $(STEP), sw_overlap , multiDDR ))
 ITER   := 16
 endif
+
 PF     := 8
+ifeq ($(STEP), kernel_4)
+PF   := 4
+endif
+
 CURRENT_DIR = $(PWD)
 PLATFORM :=/proj/xbuilds/2020.1_daily_latest/internal_platforms/xilinx_u200_xdma_201830_2/xilinx_u200_xdma_201830_2.xpfm
 
 
-ifeq ($(SOLUTION),1)
-	SRCDIR := ./../reference_files
-else
-	SRCDIR := ./../src/$(STEP)
-endif
+SRCDIR := ./../reference_files
 
 # Default Settings here ..
 HOST_SRC_CPP := $(SRCDIR)/compute_score_host.cpp
@@ -21,11 +22,11 @@ BUILDDIR := ./../build/$(STEP)
 
 ifeq ($(STEP), $(filter $(STEP), single_buffer , split_buffer , generic_buffer , sw_overlap ))
 HOST_SRC_FPGA := 
-BUILDDIR := ./dataMovement
+BUILDDIR := ./dataMovement_1
 NOBUILD = 1
 endif
 
-ifeq ($(STEP), $(filter $(STEP), kernel_basic , kernel , kernel_16 , stream , multiDDR ))
+ifeq ($(STEP), $(filter $(STEP), kernel_basic , kernel , kernel_4 , kernel_16 , stream , multiDDR ))
 HOST_SRC_FPGA := $(SRCDIR)/compute_score_fpga_$(STEP).cpp
 endif
 
@@ -68,7 +69,16 @@ build: host
 
 ifeq ($(NOBUILD),1)
 	echo " Copying runOnfpga_$(TARGET).* files and host exectutable to $(BUILDDIR) " ;
+	cp ../build/kernel/runOnfpga_$(TARGET).* $(BUILDDIR)
+ifeq ($(WORDS),16)
 	cp ../build/kernel_16/runOnfpga_$(TARGET).* $(BUILDDIR)
+endif
+ifeq ($(WORDS),8)
+	cp ../build/kernel/runOnfpga_$(TARGET).* $(BUILDDIR)
+endif
+ifeq ($(WORDS),4)
+	cp ../build/kernel_4/runOnfpga_$(TARGET).* $(BUILDDIR)
+endif
 run: build 
 else
 run: build ./$(BUILDDIR)/runOnfpga_$(TARGET).xclbin
@@ -88,13 +98,14 @@ endif
 
 	 
 all :
-	cd $(CURRENT_DIR); make run STEP=kernel_basic TARGET=hw SOLUTION=1
 	cd $(CURRENT_DIR); make run STEP=kernel TARGET=hw SOLUTION=1
+	cd $(CURRENT_DIR); make run STEP=kernel_4 TARGET=hw SOLUTION=1
 	cd $(CURRENT_DIR); make run STEP=kernel_16 TARGET=hw SOLUTION=1
-	cd $(CURRENT_DIR); make run STEP=single_buffer SOLUTION=1
-	cd $(CURRENT_DIR); make run STEP=split_buffer SOLUTION=1
-	cd $(CURRENT_DIR); make run STEP=generic_buffer ITER=16 SOLUTION=1
-	cd $(CURRENT_DIR); make run STEP=sw_overlap ITER=16 SOLUTION=1
+	cd $(CURRENT_DIR); make run STEP=single_buffer SOLUTION=1 WORDS=16
+	cd $(CURRENT_DIR); make run STEP=split_buffer SOLUTION=1 WORDS=16
+	cd $(CURRENT_DIR); make run STEP=generic_buffer ITER=16 SOLUTION=1 WORDS=16
+	cd $(CURRENT_DIR); make run STEP=sw_overlap ITER=16 SOLUTION=1 WORDS=16
+	cd $(CURRENT_DIR); make run STEP=kernel_basic TARGET=hw SOLUTION=1
 	#cd $(CURRENT_DIR); make run STEP=stream TARGET=hw SOLUTION=1
 
 help:

@@ -14,6 +14,7 @@
 		-o ./$(BUILDDIR)/runOnfpga_$(TARGET).xo
 
 ifeq ($(STEP),multiDDR)
+		#--config $(CURRENT_DIR)/connectivity.cfg 
 ./$(BUILDDIR)/runOnfpga_$(TARGET).xclbin: ./$(BUILDDIR)/runOnfpga_$(TARGET).xo
 	v++ -l -g -t $(TARGET) -R 1 \
 		--platform $(PLATFORM) \
@@ -22,7 +23,7 @@ ifeq ($(STEP),multiDDR)
 		--temp_dir ./$(BUILDDIR)/temp_dir \
 		--report_dir ./$(BUILDDIR)/report_dir \
 		--log_dir ./$(BUILDDIR)/log_dir \
-		--config connectivity.cfg \
+		--sp runOnfpga_1.input_words:DDR[1:2] \
 		-I$(SRCDIR) \
 		./$(BUILDDIR)/runOnfpga_$(TARGET).xo \
 		-o ./$(BUILDDIR)/runOnfpga_$(TARGET).xclbin
