@@ -1,6 +1,7 @@
 # Methodology for Architecting a Device Accelerated Application
   
-## Establish a Baseline Application Performance and Establish Goals
+## Profiling the Application
+
 The algorithm can be divided in two sections:  
 * Compute the hash function : This is performed on the number of the input words and creates output flags for each word.
 * Compute document score : Uses the output flags from previous hash function and creates the score of each document.
@@ -18,9 +19,9 @@ Under Bloom-filter/cpu_src, main funcion calls runOnCPU function. This function 
 
 2. The output is as follows.
     ```
-    Total execution time of CPU                        |  4112.5895 ms
-    Compute Hash & Output Flags processing time        |  3660.4433 ms
-    Compute Score processing time                      |   452.1462 ms
+    Total execution time of CPU          |   3450.8297 ms
+    Compute Hash processing time         |   3080.2708 ms
+    Compute Score processing time        |    370.5588 ms
     --------------------------------------------------------------------
     ```
 
@@ -29,75 +30,6 @@ The above command computes the score for 100,000 documents, amounting to 1.39 GB
 Throughput = Total data/Total time = 1.39 GB/4.112s = 338 MB/s
 
 3. It is estimated that in 2012, all the data in the American Library of Congress amounted to 15 TB. Based on the above numbers, we can estimate that run processing the entire American Library of Congress on the host CPU would take about 12.3 hours (15TB / 338MB/s).
-
-### Profiling the Application
-
-To improve the performance, you need to identify bottlenecks where the application is spending the majority of the total running time.
-
-As we can see from the execution times in the previous step, the applications spends 89% of time in calculating the hash function and 11 % of the time in computing the document score.
-
-Because you only have the function `runOnCPU` to accelerate, you will run the executable and evaluate the execution time of the function. We also need to recompile the host with necessary flags to enable for gprof. 
-
-1. Recompile the host and extract the profile result.
-
-   ```
-   make host_gprof; 
-   gprof host gmon.out> gprofresult.txt
-   ```
-
-2. To view the gprof report, open the `gprofresult.txt` file in a text editor. You should see results similar to the following table.
-
-   Each sample counts as 0.01 seconds.
-
-   The flat profile report of the individual sub-functions is as follows.
-
-   | % Time | Cumulative Seconds | Self Seconds | Total Calls  | ms/Call  | ms/Call  | Name                         |  
-   |--------:|-----------:|----------:|----------:|----------:|----------:|:------------------------------|  
-   | 43.19  |     7.55  |   7.55   |  699484226   |  0.00  |  0.00   | MurmurHash2                 |
-   | 28.30  |     12.49 |   4.94   |    1   |   4.94   |   12.49 | runOnCPU              |
-   | 17.81 | 15.60 | 3.11 | 1 | 3.11 | 4.99 | setupData |
-
-   You can see that the application spends almost half of time in the sub-function `MurmurHash2`, which computes the hash values of words in each document. The `MurmurHash2` sub-function is called by `runOnCPU` and `setupData` functions as part of the `main` function.
-
-   The following table shows a high-level view of the functions inside the `main` function as part of the call graph for the previous report `gprofresults.txt`.
-
-    | % Time |         Self              |  Children | Called | Name
-   |--------:|-----------:|----------:|----------:|:------------|
-   | 72.9 | 4.54 | 8.76 | 1 | runOnCPU |
-   | 26.8  | 3.85 | 1.03 | 1 | setupData |
-
-   From a `main` function standpoint, you can see that the CPU spends almost 73% of time in the `runOnCPU` function. In the `runOnCPU` function, there is only one child call, which is the `MurmurHash2` function. Based on execution times from table, you can deduce that around 66% **((8.76/(8.76+4.54))** of time is spent by calls to `MurmurHash2`. Therefore, accelerating the `runOnCPU` function would significantly increase the performance of the application.
-
-
-## Create budget for Computation on Device
-
-For creating budget of the kernels, let's say we want to use 10k docs with approx 3500 words in each doc. This results into 35M words. Each word is 4Bytes which is equivalent to 35M * 4B = 140 MB. 
-Each "RAVI" function creates flag of unsigned char which results into 35M * 1B = 35 MB.  
-We also need to take into account for moving the data from Host to Device and Device to Host back.
-
-s/w Version is about 358ms which is equivalent to 140 MB/ 358ms = 388MBps 
-
-Let's say we want to accelerate this Applications to 2GBps. To achieve this, all 35M words needs to be processed in 140MB/2GBps = 140MB/2000MBps = 0.07s or 70 ms. 
-
-For 70ms, we have to budget for hash compute and profile score calculation. Assuming, both functions take about half the time. Then we must compute hash function within 35 ms. 
-
-The whole application time should be split and budgeted conceptually based on following
-1. Transferring document data of size 140MB from Host to device DDR using PCIe
-2. Compute the Hash and craete the flags
-3. Transferring flags data of size 35MB from Device to Host using PCIe.
-
-Run PCIe BW : 11 GB/sec
-
-For 1, Using PCIe BW of 11GBps, approximate time for transfer = 140MB/11G = 12ms
-For 3, Using PCIe BW of 11GBps, approximate time for transfer = 35MB/11G = 3ms
-
-This leaves budget of 35ms - 12ms - 3ms = 20ms for Kernel Computation. 
-
-In 20ms, we need to compute 35MB words. Using 300MHz, there are 6M Cycles in 20 ms. If one word is processed in every cycle, then we will need 35M cycles at the best resulting into 35M/300MHz = approx 120ms. To compute processing of 35M in 6M cycles, we will need to process at least 6 words in parallel at the best. 
-
-If we could create kernel to process say 8 words in parallel, then we can be confident to achieve finally performance of 2GBps. 
-
-
 
 
 ## Identify Functions to Accelerate on FPGA
@@ -108,7 +40,7 @@ The algorithm can be divided into two sections
    
 Let's evaluate which of these sections are a good fit for FPGA.
 
-### Evaluating the Hash Function 
+### Evaluating the MurmurHash2 Function 
 
 1. Open `MurmurHash2.c` file with a file editor.
 
@@ -166,8 +98,8 @@ The three arithmetic operations shift a total of 44-bits (when`len=3` in the abo
 
 3. Close the file.
 
-### Evaluating the "Compute Output Flags from Hash" code section
-### Identify Acceleration Potential of Hash Function
+### Evaluating the first for loop in runCPU function 
+
 1. Open `compute_score_host.cpp` file in the file editor. 
 
 2. The code at lines 32-58 which computes output flags is shown below.
@@ -220,7 +152,7 @@ This code section is a a good candidate for FPGA as the hash function can run fa
 
 
 
-### Identify Acceleration Potential of "Compute Document Score" function
+### Evaluating the second for loop in runCPU function that computes "Compute Score"
 
 The code for computing the document score is shown below:
 
@@ -253,47 +185,84 @@ Based on this analysis, it is only beneficial to accelerate the "Compute Output 
 
 
 
-## Identify Device Parallelization Needs
+## Create overall budget for the Application to run on FPGA
 
-Now that we have analyzed that "Hash" function has potential of accleration on FPGA and overall acceleration goal of 2GBps has been established, we can also determine what level of parallelization is needed to meet the goals. We need to determine the throughput of hardware function without parallization first.
+Now that we have analyzed that "Hash" function has potential of accleration on FPGA and overall acceleration goal of 6GBps has been established, we can also determine what level of parallelization is needed to meet the goals. 
 
-Let's use 100000 input documents for our calculations. This is equivalent of 35M words with approximately 3500 words per document. 
+Let's use 100,000 input documents for our calculations. This is equivalent of 350M words with approximately 3500 words per document. 
 
 Rerun Original s/w in cpu_run directory using NUM_DOCS=100000, 
     Bloom-Filter/cpu_run
-    make run NUM_DOCS=10000    produces following 
+    make run NUM_DOCS=100000    produces following 
     
-     Total execution time of CPU          |   345.8297 ms
-     Compute Hash processing time         |   308.2708 ms
-     Compute Score processing time        |    37.5588 ms
- 
-Software Version is about 345ms which is equivalent to 140 MB/ 345ms = approx 400MBps 
+    Total execution time of CPU          |   3450.8297 ms
+    Compute Hash processing time         |   3080.2708 ms
+    Compute Score processing time        |    370.5588 ms
+    ------------------------------------------------------------
 
-We have decided to keep only Compute Hash function in FPGA. This function takes about 308ms in Sotware. 
+Software Version is about 345ms which is equivalent to 1400 MB/ 3450ms = approx 400MBps 
 
-To achieve acceleration of 2GBps of this Applications, all 35M words needs to be processed in 140MB/2GBps = 140MB/2000MBps = 0.07s or 70 ms. 
+We have decided to keep only Compute Hash function in FPGA. This function takes about 3450ms in Software. 
 
-For 70ms, we have to budget for hash compute and profile score calculation. Since we decided to keep the Compute Score function on software side, it will take about 37ms like during pure software run. This leaves about 70ms - 37ms = approx 33ms time for everything else. 
 
-The whole application time should be split and budgeted based on following
-1. Transferring document data of size 140MB from Host to device DDR using PCIe
-2. Compute the Hash and craete the flags
-3. Transferring flags data of size 35MB from Device to Host using PCIe.
+### Determine the Maximum Achievable Throughput
+In most FPGA-accelerated systems, the maximum achievable throughput is limited by the PCIe® bus. The PCIe performance is influenced by many different aspects, such as motherboard, drivers, targeted shell, and transfer sizes. The Vitis core development kit provides a utility, `xbutil` and you can run the `xbutil dmatest` command to measure the maximum PCIe bandwidth it can achieve. The throughput on your design target cannot exceed this upper limit.
 
-Run PCIe BW : 11 GB/sec
+```xbutil dmatest``` yields following output
 
-For 1, Using PCIe BW of 11GBps, approximate time for transfer = 140MB/11G = 12ms
+```
+  Host -> PCIe -> FPGA write bandwidth = 8485.43 MB/s
+  Host <- PCIe <- FPGA read bandwidth = 12164.4 MB/s
+  Data Validity & DMA Test on bank1
+  Host -> PCIe -> FPGA write bandwidth = 9566.47 MB/s
+  Host <- PCIe <- FPGA read bandwidth = 12155.7 MB/s
+  Data Validity & DMA Test on bank2
+  Host -> PCIe -> FPGA write bandwidth = 8562.48 MB/s
+  Host <- PCIe <- FPGA read bandwidth = 12154.5 MB/s
+```
 
-For 3, Using PCIe BW of 11GBps, approximate time for transfer = 35MB/11G = 3ms
+We can see that the PCIe FPGA Write Bandwidth is about 9GB/sec and FPGA Read Bandwidh is about 12GB/sec
 
-This leaves budget of 33ms - 12ms - 3ms = 18ms for Kernel Computation. This is equivalent of 140MB/18ms, about 8GBps. Thus Tgoal = 8GBps 
+### Identifying Performance Bottlenecks
+In a purely sequential application, performance bottlenecks can be easily identified by looking at profiling reports. However, most real-life applications are multi-threaded and it is important to the take the effects of parallelism in consideration when looking for performance bottlenecks. 
 
-In 18ms, we need to compute 35MB words. Using 300MHz, there are 5.4M Cycles in 18 ms. If one word is processed in every cycle, then we will need 35M cycles at the best resulting into 35M/300MHz = approx 120ms. To compute processing of 35M words in 5.4M cycles, we will need to process at least 7 words in parallel at the best. 
 
+![](./images/Architect1.PNG) 
+
+For visualization perspective, code snippets reviwed above are used as function blocks.
+Two "Hash" functions in hardware can be executed in parallel of couse at the expense of extra resources. Output of blocks "Hash" is fed to block "Compute Score" to calculate the score of each document. 
+
+In Software, 
+  - Hash compute blocks are calculated for all the words up front and output flags are set in local memory. Each of the loops in Hash compute blocks are run sequentially.
+  - Once all hashes have computed, only then another for loop is called for all the documents to calculate the Compute Score. 
+
+In FPGA, 
+  - We dont need to send all the words together to hash function and then calculate the Compute Score. In fact, we can send smaller sets of data and calculate hash functions.
+  - So we dont really need to calculate all the flags before starting to execute block "Compute Score". The advantage of this implemetation can also enable executing block "Compute Score" run in parallel to hash function as well. 
+  - Based on above analysis, Hash functions are good candidate for computation on FPGA and Compute Score calculation can be carried out on Host. Hash functions can compute the flags based on 2nd set of words blocks while Compute Score can be calculated on the 1st set of flags computed by Hash functions. We can take advantage of effectively running Hash block and profile block as parallel to further improve the performance. 
+
+Running the aplication on FPGA also adds additional delay in tranferring the data from host to device memory and reading it back. The whole application time should be split and budgeted based on following
+1. Transferring document data of size 1400MB from Host to device DDR using PCIe. Using PCIe BW of 9GBps, approximate time for transfer = 1400MB/9G = 155ms
+2. Compute the Hashes on FPGA
+3. Transferring flags data of size 350MB from Device to Host using PCIe. Using PCIe BW of 9GBps, approximate time for transfer = 350MB/9G = 39ms. This data transfer can be carried out in parallel with computing hash functons.
+4. Calculate the Compute Score once all the flags are available from FPGA. This takes about 370ms on CPU 
+
+So the application conceptually can look like following : 
+
+![](./images/Architect2.PNG) 
+
+The performance of the system will be determined by the slowest block of your system. In this case, we are performing Compute Score on CPU and it takes about 370ms. Even if Hashes can be computed hypothetical in no time, the overall application will take at least 370ms. This should be our goalpoast for achieving perforamnce. 
+
+Since Compute score is computed on the CPU and we can't accelerte this further, we can at the best hide the latency of transferring data from host to FPGA, computing Hashes and transferring data from FPGA to host. These can be carried out in parallel with Hash functions. 
+Further, tranferring data from host, computing Hashes and trasferring data from FPGA to host, all of these can also be overlapped.
+
+We can set the goal of computing the Compute score of 100000 documents closer to 400ms which is equivalent of 1400MB/400ms = approx 3.5GBs
 
 
 
 ### Estimate Hardware Throughput without Parallelization
+
+We have identified the function "Hash" to be accelerated on the function. 
 
 The throughput achievable from kernel can be approximated as:
 
@@ -305,45 +274,48 @@ where:
 * **VOPS** represents the volume of operations processed on the input and output data.
 * **Computational Intensity** of a function is the ratio of the total number of operations to the maximum amount of input and output data.  
 
+The function "Hash" calls  "Murmurhash2" twice, each of which can be considered as 1 Opeartion. So the "Computational Intensity" is 2. 
+
 **Thw = (Frequency\*1)samples**
 
-Because each sample is 4 bytes of data and computational intensity is 1, the maximum throughput of kernel is: 
-**Thw = (300MHz)\*4B = 1.2GB/s**.
+Throughput of the whole application is determined by the minimum throughput of the function. If we are producing flags as an output of Hash function every cycle then every function in the chain should be able to initiate itself again every cycle. That means the initiation interval of all the functions on FPGA in previous visualization should be 1. 
+
+Because each sample is 4 bytes of data and computational intensity is 2, with II=1, the maximum throughput of kernel is: 
+
+**Thw = (300MHz/2) samples**.
+
+OR
+
+**Thw = (300MHz/2)\*4B = 600MB/s**.
 
 Each word in "Hash" function can be computed in parallel so muliple words can be computed in parallel to improve the acceleration.
 
-
 ### Determine How Much Parallelism is Needed
 
-Throuput potential for hash function computing one word is 1.2GB/sec. The following function can determine how much of the parallelism needed to achieve the performance goal. 
+**Parallelism Needed = Tgoal/Thw**
 
-Speed-Up = Thw/Tsw = Fmax * Running Time/Vops 
+**Parallelism Needed = 3.5GBps/600MBps** = approx 6 times. 
 
-Speed-Up = 1.2GBps/308Mps = approx 4 times
-
-For Hash function, this parallization can be achieved in either by widening the datapath or by using multiple kernel instances. 
 
 ### Determine How Many Samples the Datapath Should be Processing in Parallel
 
-Budget for computing Hash function is 18ms. This is equivalent of 140MB/18ms, about 8GBps. Thus Tgoal = 8GBps 
+We must have about 8 "Murmurhash2" functions to meet the goal of 3.5GBps. Each word calls this function twice and processing 4 words in parallel will use 8 of "Murmurhash2" function.
 
-Tgoal = 8GBps
+The above theoratical calculations are based on idealistic scenario and memory bottlenecks are not considered. As the data will be accessed from host and Kenel at the same time, we should plan for process even more words to give extra margin for memory bottnecks. 
 
-Parallelism needed = Tgoal/Thw = 8GBps/1.2GBps = Approx 7 times. 
+If we could create kernel to process say 8 words in parallel, then we can be confident to achieve overall application performance of 2GBps. 
 
-If we could create kernel to process say 8 words in parallel, then we can be confident to achieve finally performance of 2GBps. 
+Also, in the forthcoming sections we are going to implement the kernel and host code. First we will analyze the results by keeping hash functions on FPGA and Compute Score on CPU to be proecessed in sequential mode. Once we implment the kernel that matches our defined spec, we can introduce parallelism between Hashes and Compute Score functions and thus improve the performance
 
+## Architectural spec for Kenel, Target Performance, Interface Widths, Datapath Widths etc.
 
-## Architectural spec for Kenel, TArget Performance, Interface Widths, Datapath Widths etc.
+At this stage of project, we have identified the following requirements of the kernel for optimal application performance during this architecture definition phase
 
-At this stage of project, we have identified that we are using only using Hash Function as a kernel to reside on FPGA as an accelerator. This kernel must compute 8 words in parallel to achieve acceleration of 2GBps. 
-Using 8 words in parallel for 35M words will give Throughput of 8*4B*300MHz = 7.6GBps
+- Process 8 words in Parallel for computing Hashes
+- Datapath width of 512-bit. Processing 8 words in parallel will require 32bit*8 = 256 bits in parallel but its recommended to read max possible 512-bits in parallel since the input data is contigous. This way we will need less number of memory accesses but we will need internal buffering.
+- Throughput requirements of reading input words and writing flags every cycle i.e. II=1
 
-Based on methodology, we will also have data width accessing memory of size 512-bit to achieve DDR bandwidth such that memory doesn't become bottleneck here. 
-
-
-## Conclusion
-
+## Next Step
 In this lab, you have seen how to profile an application and determine which parts are best suited for FPGA acceleration. We have extracted requirements of Hash function that must be process 8 words in parallel to achieve our accelration goal.
 
 In the next section, you will use "Methodology for Developing C/C++ Kernels" to create optimized kernel to meet the requirements of the Kenel spec.

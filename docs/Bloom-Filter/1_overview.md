@@ -41,7 +41,7 @@ Example:
 * **Document**: [{word_1,20} ,{word_2,40},{word_3,50}]
 * **Compute Score for document**:  20x10 + 0x40 + 50x20 = 1200
 
-In this step, you will build and run this application to create baseline performance data for the original, non-accelerated application.
+In the next step, you will first experience the acceleration potential before you get into steps of creating kernel and optimizing it.
 
 <p align="center"><b>
 Start the next step: <a href="./2_experience-acceleration.md">2: Experience the Acceleration </a>

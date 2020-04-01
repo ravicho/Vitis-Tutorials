@@ -63,9 +63,7 @@ You can see that by efficiently leveraging FPGA acceleration, the throughput of 
 
 ## Next Step
 
-You have identified the functions from the original application that are targets for acceleration and established the performance goals. In the following labs, you will create a baseline of the original bloom filter function running in hardware and perform a series of host and kernel code optimizations to meet your performance goals. You will begin by [creating a Vitis core development kit application](./baseline_fpga.md) from the original application.
-
-You will be using hardware emulation runs for measuring performance in each step. As part of the final step, you can run all these steps in hardware to demonstrate how the performance was improved at each step.
+In this step, you have previewed the acceleration that can be achieved using FPGA device. Next we will dive into what functions can be accelerated by profiling original applications. You will also be defining the interface boundaries and define the performance constraints to achieve the desired acceleration
 
 <p align="center"><b>
 Start the next step: <a href="./3_architect-the-application.md">2: Architect the Application for FPGA</a>
