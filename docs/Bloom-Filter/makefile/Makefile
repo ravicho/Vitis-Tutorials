@@ -9,6 +9,9 @@ PF     := 8
 ifeq ($(STEP), kernel_4)
 PF   := 4
 endif
+ifeq ($(STEP), kernel_16)
+PF   := 16
+endif
 
 CURRENT_DIR = $(PWD)
 PLATFORM :=/proj/xbuilds/2020.1_daily_latest/internal_platforms/xilinx_u200_xdma_201830_2/xilinx_u200_xdma_201830_2.xpfm
@@ -26,7 +29,7 @@ BUILDDIR := ./dataMovement_1
 NOBUILD = 1
 endif
 
-ifeq ($(STEP), $(filter $(STEP), kernel_basic , kernel , kernel_4 , kernel_16 , stream , multiDDR ))
+ifeq ($(STEP), $(filter $(STEP), kernel , kernel_4 , kernel_16 , multiDDR , kernel_portSize ))
 HOST_SRC_FPGA := $(SRCDIR)/compute_score_fpga_$(STEP).cpp
 endif
 
@@ -66,6 +69,7 @@ setup:
 
 
 build: host
+	echo $(HOST_SRC_FPGA) is being used as source for Generating Kernel; \
 
 ifeq ($(NOBUILD),1)
 	echo " Copying runOnfpga_$(TARGET).* files and host exectutable to $(BUILDDIR) " ;
@@ -93,20 +97,21 @@ ifeq ($(TARGET), hw)
 	cd $(BUILDDIR) && ./host 100000 $(ITER) ;
 else
 	echo "Running $(TAGET) mode"; 
-	cd $(BUILDDIR) && XCL_EMULATION_MODE=$(TARGET) ./host 100 $(ITER) ;
+	cd $(BUILDDIR) && XCL_EMULATION_MODE=$(TARGET) ./host 1 $(ITER) ;
 endif
 
 	 
 all :
 	cd $(CURRENT_DIR); make run STEP=kernel TARGET=hw SOLUTION=1
+	cd $(CURRENT_DIR); make run STEP=kernel_basic TARGET=hw SOLUTION=1
 	cd $(CURRENT_DIR); make run STEP=kernel_4 TARGET=hw SOLUTION=1
 	cd $(CURRENT_DIR); make run STEP=kernel_16 TARGET=hw SOLUTION=1
+	cd $(CURRENT_DIR); make run STEP=kernel_portSize TARGET=hw SOLUTION=1
+	cd $(CURRENT_DIR); make run STEP=multiDDR TARGET=hw SOLUTION=1
 	cd $(CURRENT_DIR); make run STEP=single_buffer SOLUTION=1 WORDS=16
 	cd $(CURRENT_DIR); make run STEP=split_buffer SOLUTION=1 WORDS=16
 	cd $(CURRENT_DIR); make run STEP=generic_buffer ITER=16 SOLUTION=1 WORDS=16
 	cd $(CURRENT_DIR); make run STEP=sw_overlap ITER=16 SOLUTION=1 WORDS=16
-	cd $(CURRENT_DIR); make run STEP=kernel_basic TARGET=hw SOLUTION=1
-	#cd $(CURRENT_DIR); make run STEP=stream TARGET=hw SOLUTION=1
 
 help:
 	@echo  " "
