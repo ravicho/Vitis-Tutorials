@@ -1,7 +1,7 @@
 TARGET := hw
 
 ITER   := 
-ifeq ($(BUFF), $(filter $(BUFF), sw_overlap , multiDDR ))
+ifeq ($(STEP), $(filter $(STEP), sw_overlap , multiDDR ))
 ITER   := 16
 endif
 
@@ -21,28 +21,12 @@ SRCDIR := ./../reference_files
 
 # Default Settings here ..
 HOST_SRC_CPP := $(SRCDIR)/compute_score_host.cpp
-#BUILDDIR := ./../build/$(STEP)
-BUILDDIR := ./../build/kernel_$(PF)
+BUILDDIR := ./../build/kernel_$(PF)/$(TARGET)
+RUNDIR := ./../build/$(STEP)/kernel_$(PF)/$(TARGET)
 
-ifeq ($(BUFF), $(filter $(BUFF), single_buffer , split_buffer , generic_buffer , sw_overlap ))
+ifeq ($(STEP), $(filter $(STEP), single_buffer , split_buffer , generic_buffer , sw_overlap , multiDDR ))
 HOST_SRC_FPGA := $(SRCDIR)/compute_score_fpga_kernel.cpp
 HOST_SRC_CPP := $(SRCDIR)/compute_score_host.cpp
-RUNDIR := ./../build/$(BUFF)/kernel_$(PF)
-#NOBUILD = 1
-endif
-
-ifeq ($(BUFF), $(filter $(BUFF), split_buffer , generic_buffer , sw_overlap ))
-NOBUILD = 1
-endif
-
-#ifeq ($(BUFF), $(filter $(BUFF), kernel , kernel_4 , kernel_16 ))
-#HOST_SRC_FPGA := $(SRCDIR)/compute_score_fpga_kernel.cpp
-#endif
-
-ifeq ($(BUFF), $(filter $(BUFF),  multiDDR ))
-HOST_SRC_FPGA := $(SRCDIR)/compute_score_fpga_kernel.cpp
-BUILDDIR := ./../build/multiDDR
-RUNDIR := ./../build/multiDDR
 endif
 
 # Common Source Code for Host
@@ -51,16 +35,16 @@ HOST_SRC_CPP += $(SRCDIR)/xcl2.cpp
 HOST_SRC_CPP += $(SRCDIR)/main.cpp 
 
 HOST_SRC_RUN_CPP = $(SRCDIR)/run_single_buffer.cpp
-ifeq ($(BUFF),multiDDR)
+ifeq ($(STEP),multiDDR)
 HOST_SRC_RUN_CPP = $(SRCDIR)/run_sw_overlap_multiDDR.cpp
 endif
-ifeq ($(BUFF),split_buffer)
+ifeq ($(STEP),split_buffer)
 HOST_SRC_RUN_CPP = $(SRCDIR)/run_split_buffer.cpp
 endif
-ifeq ($(BUFF),generic_buffer)
+ifeq ($(STEP),generic_buffer)
 HOST_SRC_RUN_CPP = $(SRCDIR)/run_generic_buffer.cpp
 endif
-ifeq ($(BUFF),sw_overlap)
+ifeq ($(STEP),sw_overlap)
 HOST_SRC_RUN_CPP = $(SRCDIR)/run_sw_overlap.cpp
 endif
 
@@ -85,21 +69,8 @@ build: compile_host ./$(BUILDDIR)/runOnfpga_$(TARGET).xclbin
 
 
 run:   build host
-#ifeq ($(NOBUILD),1)
 	@echo " Copying runOnfpga_$(TARGET).* files and host exectutable to $(RUNDIR) " ;
-ifeq ($(PF),16)
-	cp ../build/kernel_16/runOnfpga_$(TARGET).* $(RUNDIR)
-endif
-ifeq ($(PF),8)
-	cp ../build/kernel_8/runOnfpga_$(TARGET).* $(RUNDIR)
-endif
-ifeq ($(PF),4)
-	cp ../build/kernel_4/runOnfpga_$(TARGET).* $(RUNDIR)
-endif
-#endif
-#	if [ -f runOnfpga_$(TARGET).xclbin ]; \
-	then mv runOnfpga_$(TARGET).* $(BUILDDIR) ; \
-	fi
+	cp $(BUILDDIR)/runOnfpga_sw_emu.xclbin*.* $(RUNDIR)
 	cp xrt.ini $(RUNDIR)
 ifeq ($(TARGET), hw)
 	@echo "************  Use Command Line to run application!  ************"

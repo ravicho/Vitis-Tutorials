@@ -13,7 +13,7 @@
 		$(HOST_SRC_FPGA) \
 		-o ./$(BUILDDIR)/runOnfpga_$(TARGET).xo
 
-ifeq ($(BUFF),multiDDR)
+ifeq ($(STEP),multiDDR)
 ./$(BUILDDIR)/runOnfpga_$(TARGET).xclbin: ./$(BUILDDIR)/runOnfpga_$(TARGET).xo
 	v++ -l -g -t $(TARGET) -R 1 \
 		--platform $(PLATFORM) \
