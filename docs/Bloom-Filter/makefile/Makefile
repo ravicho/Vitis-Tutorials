@@ -1,7 +1,7 @@
 TARGET := hw
 
 ITER   := 
-ifeq ($(STEP), $(filter $(STEP), sw_overlap , multiDDR ))
+ifeq ($(BUFF), $(filter $(BUFF), sw_overlap , multiDDR ))
 ITER   := 16
 endif
 
@@ -21,20 +21,28 @@ SRCDIR := ./../reference_files
 
 # Default Settings here ..
 HOST_SRC_CPP := $(SRCDIR)/compute_score_host.cpp
-BUILDDIR := ./../build/$(STEP)
+#BUILDDIR := ./../build/$(STEP)
+BUILDDIR := ./../build/kernel_$(PF)
 
-ifeq ($(STEP), $(filter $(STEP), single_buffer , split_buffer , generic_buffer , sw_overlap ))
-HOST_SRC_FPGA := 
-BUILDDIR := ./dataMovement_1
+ifeq ($(BUFF), $(filter $(BUFF), single_buffer , split_buffer , generic_buffer , sw_overlap ))
+HOST_SRC_FPGA := $(SRCDIR)/compute_score_fpga_kernel.cpp
+HOST_SRC_CPP := $(SRCDIR)/compute_score_host.cpp
+RUNDIR := ./../build/$(BUFF)/kernel_$(PF)
+#NOBUILD = 1
+endif
+
+ifeq ($(BUFF), $(filter $(BUFF), split_buffer , generic_buffer , sw_overlap ))
 NOBUILD = 1
 endif
 
-ifeq ($(STEP), $(filter $(STEP), kernel , kernel_4 , kernel_16 , multiDDR , kernel_portSize ))
-HOST_SRC_FPGA := $(SRCDIR)/compute_score_fpga_$(STEP).cpp
-endif
+#ifeq ($(BUFF), $(filter $(BUFF), kernel , kernel_4 , kernel_16 ))
+#HOST_SRC_FPGA := $(SRCDIR)/compute_score_fpga_kernel.cpp
+#endif
 
-ifeq ($(STEP), $(filter $(STEP), localbuf ))
-BUILDDIR := ./../build/kernel
+ifeq ($(BUFF), $(filter $(BUFF),  multiDDR ))
+HOST_SRC_FPGA := $(SRCDIR)/compute_score_fpga_kernel.cpp
+BUILDDIR := ./../build/multiDDR
+RUNDIR := ./../build/multiDDR
 endif
 
 # Common Source Code for Host
@@ -43,16 +51,16 @@ HOST_SRC_CPP += $(SRCDIR)/xcl2.cpp
 HOST_SRC_CPP += $(SRCDIR)/main.cpp 
 
 HOST_SRC_RUN_CPP = $(SRCDIR)/run_single_buffer.cpp
-ifeq ($(STEP),multiDDR)
+ifeq ($(BUFF),multiDDR)
 HOST_SRC_RUN_CPP = $(SRCDIR)/run_sw_overlap_multiDDR.cpp
 endif
-ifeq ($(STEP),split_buffer)
+ifeq ($(BUFF),split_buffer)
 HOST_SRC_RUN_CPP = $(SRCDIR)/run_split_buffer.cpp
 endif
-ifeq ($(STEP),generic_buffer)
+ifeq ($(BUFF),generic_buffer)
 HOST_SRC_RUN_CPP = $(SRCDIR)/run_generic_buffer.cpp
 endif
-ifeq ($(STEP),sw_overlap)
+ifeq ($(BUFF),sw_overlap)
 HOST_SRC_RUN_CPP = $(SRCDIR)/run_sw_overlap.cpp
 endif
 
@@ -68,50 +76,50 @@ setup:
 
 
 
-build: host
-	echo $(HOST_SRC_FPGA) is being used as source for Generating Kernel; \
-
-ifeq ($(NOBUILD),1)
-	echo " Copying runOnfpga_$(TARGET).* files and host exectutable to $(BUILDDIR) " ;
-	cp ../build/kernel/runOnfpga_$(TARGET).* $(BUILDDIR)
-ifeq ($(WORDS),16)
-	cp ../build/kernel_16/runOnfpga_$(TARGET).* $(BUILDDIR)
-endif
-ifeq ($(WORDS),8)
-	cp ../build/kernel/runOnfpga_$(TARGET).* $(BUILDDIR)
-endif
-ifeq ($(WORDS),4)
-	cp ../build/kernel_4/runOnfpga_$(TARGET).* $(BUILDDIR)
-endif
-run: build 
-else
-run: build ./$(BUILDDIR)/runOnfpga_$(TARGET).xclbin
-endif
+compile_host:  host
+	@echo $(HOST_SRC_FPGA) is being used as source for Generating Kernel; \
 	mkdir -p $(BUILDDIR)
-	if [ -f runOnfpga_$(TARGET).xclbin ]; \
+	mkdir -p $(RUNDIR)
+
+build: compile_host ./$(BUILDDIR)/runOnfpga_$(TARGET).xclbin
+
+
+run:   build host
+#ifeq ($(NOBUILD),1)
+	@echo " Copying runOnfpga_$(TARGET).* files and host exectutable to $(RUNDIR) " ;
+ifeq ($(PF),16)
+	cp ../build/kernel_16/runOnfpga_$(TARGET).* $(RUNDIR)
+endif
+ifeq ($(PF),8)
+	cp ../build/kernel_8/runOnfpga_$(TARGET).* $(RUNDIR)
+endif
+ifeq ($(PF),4)
+	cp ../build/kernel_4/runOnfpga_$(TARGET).* $(RUNDIR)
+endif
+#endif
+#	if [ -f runOnfpga_$(TARGET).xclbin ]; \
 	then mv runOnfpga_$(TARGET).* $(BUILDDIR) ; \
 	fi
-	cp xrt.ini $(BUILDDIR)
+	cp xrt.ini $(RUNDIR)
 ifeq ($(TARGET), hw)
-	echo "************  Use Command Line to run application!  ************"
-	cd $(BUILDDIR) && ./host 100000 $(ITER) ;
+	@echo "************  Use Command Line to run application!  ************"
+	cd $(RUNDIR) && ./host 100000 $(ITER) ;
 else
-	echo "Running $(TAGET) mode"; 
-	cd $(BUILDDIR) && XCL_EMULATION_MODE=$(TARGET) ./host 1 $(ITER) ;
+	@echo "Running $(TAGET) mode"; 
+	cd $(RUNDIR) && XCL_EMULATION_MODE=$(TARGET) ./host 1 $(ITER) ;
 endif
 
 	 
 all :
-	cd $(CURRENT_DIR); make run STEP=kernel TARGET=hw SOLUTION=1
-	cd $(CURRENT_DIR); make run STEP=kernel_basic TARGET=hw SOLUTION=1
 	cd $(CURRENT_DIR); make run STEP=kernel_4 TARGET=hw SOLUTION=1
+	cd $(CURRENT_DIR); make run STEP=kernel TARGET=hw SOLUTION=1
 	cd $(CURRENT_DIR); make run STEP=kernel_16 TARGET=hw SOLUTION=1
-	cd $(CURRENT_DIR); make run STEP=kernel_portSize TARGET=hw SOLUTION=1
 	cd $(CURRENT_DIR); make run STEP=multiDDR TARGET=hw SOLUTION=1
 	cd $(CURRENT_DIR); make run STEP=single_buffer SOLUTION=1 WORDS=16
 	cd $(CURRENT_DIR); make run STEP=split_buffer SOLUTION=1 WORDS=16
 	cd $(CURRENT_DIR); make run STEP=generic_buffer ITER=16 SOLUTION=1 WORDS=16
 	cd $(CURRENT_DIR); make run STEP=sw_overlap ITER=16 SOLUTION=1 WORDS=16
+	#cd $(CURRENT_DIR); make run STEP=kernel_portSize TARGET=hw SOLUTION=1
 
 help:
 	@echo  " "

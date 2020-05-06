@@ -13,8 +13,7 @@
 		$(HOST_SRC_FPGA) \
 		-o ./$(BUILDDIR)/runOnfpga_$(TARGET).xo
 
-ifeq ($(STEP),multiDDR)
-		#--config $(CURRENT_DIR)/connectivity.cfg 
+ifeq ($(BUFF),multiDDR)
 ./$(BUILDDIR)/runOnfpga_$(TARGET).xclbin: ./$(BUILDDIR)/runOnfpga_$(TARGET).xo
 	v++ -l -g -t $(TARGET) -R 1 \
 		--platform $(PLATFORM) \
@@ -23,7 +22,7 @@ ifeq ($(STEP),multiDDR)
 		--temp_dir ./$(BUILDDIR)/temp_dir \
 		--report_dir ./$(BUILDDIR)/report_dir \
 		--log_dir ./$(BUILDDIR)/log_dir \
-		--sp runOnfpga_1.input_words:DDR[1:2] \
+		--config $(CURRENT_DIR)/connectivity.cfg \
 		-I$(SRCDIR) \
 		./$(BUILDDIR)/runOnfpga_$(TARGET).xo \
 		-o ./$(BUILDDIR)/runOnfpga_$(TARGET).xclbin
@@ -45,7 +44,7 @@ else
 endif
 
 host: $(SRCDIR)/*.cpp $(SRCDIR)/*.c $(SRCDIR)/*.h
-	mkdir -p $(BUILDDIR)
+	mkdir -p $(RUNDIR)
 	g++ -D__USE_XOPEN2K8 -D__USE_XOPEN2K8 \
 		-I$(XILINX_XRT)/include/ \
 		-I$(SRCDIR) \
@@ -53,7 +52,7 @@ host: $(SRCDIR)/*.cpp $(SRCDIR)/*.c $(SRCDIR)/*.h
 		$(HOST_SRC_CPP) \
 		-L$(XILINX_XRT)/lib/ \
 		-lxilinxopencl -lpthread -lrt \
-		-o $(BUILDDIR)/host
+		-o $(RUNDIR)/host
 
 emconfig.json:
 	cp $(SRCDIR)/emconfig.json .
