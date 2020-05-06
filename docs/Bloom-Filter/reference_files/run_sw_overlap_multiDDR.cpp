@@ -104,7 +104,7 @@ void runOnFPGA(
     double mbytes_block  = mbytes_total / num_iter;
     printf(" Processing %.3f MBytes of data\n", mbytes_total);
     if (num_iter>1) {
-    printf(" Splitting data in %d sub-buffers of %.3f MBytes for FPGA processing\n", num_iter, mbytes_block);
+    printf(" MultiDDR- Splitting data in %d sub-buffers of %.3f MBytes for FPGA processing\n", num_iter, mbytes_block);
     }
 
     // Events 

@@ -8,6 +8,13 @@
 #include "hls_stream_utils.h"
 #include "sizes.h"
 
+#define TOTAL_SIZE 100000
+
+//TRIPCOUNT identifiers
+const unsigned int t_size = TOTAL_SIZE;
+const unsigned int pf = PARALLELISATION;
+
+
 #ifndef PARALLELISATION
 #define PARALLELISATION 8
 #endif
@@ -42,11 +49,11 @@ void compute_hash_flags (
 {
   compute_flags: for(int i=0; i<total_size/PARALLELISATION; i++)
   {
-    #pragma HLS LOOP_TRIPCOUNT min=1 max=10000
+    #pragma HLS LOOP_TRIPCOUNT min=1 max=t_size/pf
     parallel_words_t parallel_entries = word_stream.read();
     parallel_flags_t inh_flags = 0;
 
-    for (unsigned int j=0; j<PARALLELISATION; j++)
+    compute_hash_flags_loop: for (unsigned int j=0; j<PARALLELISATION; j++)
     {
 #pragma HLS UNROLL
 
@@ -74,12 +81,12 @@ void compute_hash_flags_dataflow(
         unsigned int    bloom_filter[PARALLELISATION][bloom_filter_size],
         unsigned int    total_size)
 {
+#pragma HLS DATAFLOW
+
     hls::stream<ap_uint<512> >    data_from_gmem;
     hls::stream<parallel_words_t> word_stream;
     hls::stream<parallel_flags_t> flag_stream;
     hls::stream<ap_uint<512> >    data_to_gmem;
-
-#pragma HLS DATAFLOW
 
   // Burst read 512-bit values from global memory over AXI interface
   hls_stream::buffer(data_from_gmem, input_words, total_size/(512/32));

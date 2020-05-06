@@ -94,7 +94,7 @@ void runOnFPGA(
     double mbytes_total  = (double)(total_doc_size * sizeof(int)) / (double)(1000*1000);
     double mbytes_block  = mbytes_total / 2;
     printf(" Processing %.3f MBytes of data\n", mbytes_total);
-    printf(" Splitting data in 2 sub-buffers of %.3f MBytes for FPGA processing\n", mbytes_block);
+    printf(" Split_buffer : Splitting data in 2 sub-buffers of %.3f MBytes for FPGA processing\n", mbytes_block);
 
     // Create Events to co-ordinate read,compute and write for each iteration
 	vector<cl::Event> wordWait;
