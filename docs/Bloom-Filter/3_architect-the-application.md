@@ -279,9 +279,9 @@ where:
 
 The function "Hash" calls  "Murmurhash2" twice, each of which can be considered as 1 Opeartion. So the "Computational Intensity" is 2. 
 
-**Thw = (Frequency\*1)samples**
+**Thw = (Frequency/2)samples**
 
-Throughput of the whole application is determined by the minimum throughput of the function. If we are producing flags as an output of Hash function every cycle then every function in the chain should be able to initiate itself again every cycle. That means the initiation interval of all the functions on FPGA in previous visualization should be 1. 
+Throughput of the whole application is determined by the minimum throughput of a function. If we are producing flags as an output of Hash function every cycle then every function in the chain should be able to initiate itself again every cycle. That means the initiation interval of all the functions on FPGA in previous visualization should be 1. 
 
 Because each sample is 4 bytes of data and computational intensity is 2, with II=1, the maximum throughput of kernel is: 
 
@@ -291,13 +291,13 @@ OR
 
 **Thw = (300MHz/2)\*4B = 600MB/s**.
 
-Each word in "Hash" function can be computed in parallel so muliple words can be computed in parallel to improve the acceleration.
+Each word in "Murmurhash2" functions can be computed in parallel so muliple words can be computed in parallel to improve the acceleration.
 
 ### Determine How Much Parallelism is Needed
 
 **Parallelism Needed = Tgoal/Thw**
 
-**Parallelism Needed = 4GBps/600MBps** = approx 7 Hash functions in parallel. 
+**Parallelism Needed = 4GBps/600MBps** = approx 7 "Murmurhash2" functions in parallel. 
 
 
 ### Determine How Many Samples the Datapath Should be Processing in Parallel
@@ -306,9 +306,12 @@ We must have about 8 "Murmurhash2" functions to meet the goal of 4GBps. Each wor
 
 The above theoratical calculations are based on idealistic scenario and memory bottlenecks are not considered. As the data will be accessed from host and Kenel at the same time, we should plan for process even more words to give extra margin for memory bottnecks. 
 
-But first, we will srart by creating kernel capable of reading 4 words in parallel. Next we will review the profiling and timeline reports to identify opportuities of performance improvements and explore kernel capable of processing more words in parallel.
+First, we will srart by creating kernel capable of reading 4 words in parallel.Next, we will review the profiling and timeline reports to identify opportuities of performance improvements and explore kernel capable of processing more words in parallel. We will also send 100,000 documents in one transfer from host to device and recieve all the flags from device to host in one tranfer so that there is no memory contention. We will create kernel with most optimized performance 
 
-Also, in the forthcoming sections we are going to implement the kernel and host code. First we will analyze the results by keeping hash functions on FPGA and Compute Score on CPU to be proecessed in sequential mode. Once we implment the kernel that matches our defined spec, we can introduce parallelism between Hashes and Compute Score functions and thus improve the performance
+
+In the forthcoming sections we will explore sending 100,000 documents in chunks so that kernel compute can be overlapped with host data transfer and update host code for the optimized application performance. We will analyze the results by keeping hash functions on FPGA and Compute Score on CPU to be proecessed in sequential mode. 
+
+Once we implment the kernel that matches our defined spec and optimized the host code, we can introduce parallelism between compute on FPGA and Compute Score functions on CPU.
 
 ## Architectural spec for Kenel, Target Performance, Interface Widths, Datapath Widths etc.
 
