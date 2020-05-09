@@ -241,15 +241,17 @@ In FPGA,
   - So we dont really need to calculate all the flags before starting to execute block "Compute Score". The advantage of this implemetation can also enable executing block "Compute Score" run in parallel to hash function as well. 
   - Based on above analysis, Hash functions are good candidate for computation on FPGA and Compute Score calculation can be carried out on Host. Hash functions can compute the flags based on 2nd set of words blocks while Compute Score can be calculated on the 1st set of flags computed by Hash functions. We can take advantage of effectively running Hash block and profile block as parallel to further improve the performance. 
 
+So the application conceptually can look like following : 
+
+![](./images/Architect2.PNG) 
+
 Running the aplication on FPGA also adds additional delay in tranferring the data from host to device memory and reading it back. The whole application time should be split and budgeted based on following
 1. Transferring document data of size 1400MB from Host to device DDR using PCIe. Using PCIe Write BW of approx 8.5GBps, approximate time for transfer = 1400MB/8.5G = 165ms
 2. Compute the Hashes on FPGA
 3. Transferring flags data of size 350MB from Device to Host using PCIe. Using PCIe Read BW of approx 12GBps, approximate time for transfer = 350MB/12G = 3.25ms. This data transfer can be carried out in parallel with computing hash functons.
 4. Calculate the Compute Score once all the flags are available from FPGA. This takes about total of 370ms on CPU and also can be overlapped with compute and transfering of flags back to host. 
 
-So the application conceptually can look like following : 
 
-![](./images/Architect2.PNG) 
 
 The performance of the system will be determined by the slowest block of your system. In this case, we are performing Compute Score on CPU and it takes about 370ms. Lets say if we could compute Hash in no time, the overall application will take at least 370ms. This should be our goalpoast for achieving perforamnce. 
 
