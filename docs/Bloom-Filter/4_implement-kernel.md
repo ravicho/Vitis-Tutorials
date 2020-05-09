@@ -174,6 +174,26 @@ PIC RAVI
   - compute_hash_flags_dataflow function has dataflow enabled in Pipeline. This is important to review and indicates that Task level parallelism is enabled and expected to have overlapping across the sub-functions in compute_hash_flags_dataflow function
   - Latency reported for read_bloom_filter function is 16385 for reading . This loop is iterated over 16384 reading 512-bits of data. (??)
 
+## Reviewing the Initial Host Code
+
+The initial version of the accelerated application follows the structure of original software version. The entire input buffer is transfered from the host to the FPGA in a single transaction. Then, the FPGA accelerator performs the computation. Lastly, the results are read back from the FPGA to the host before being post-processed. 
+
+The following figure shows the sequential write-compute-read pattern implemented in this first step
+
+  ![](./images/overlap_single_buffer.PNG)
+
+The FPGA accelerator computes the hash values and flags for the provided input words.
+
+The inputs to the accelerator are as follows:
+
+* `input_doc_words`: Input array which contains the 32-bit words for all the documents.
+* `bloom_filter`: Bloom filter array which contains the inserted hash values of search array.
+* `total_size`: Unsigned int which represents the total size processed by the FPGA when it is called.
+* `load_weights`: Boolean which allows to load the `bloom_filter` array only once to the FPGA in the case of multiple kernel invocations.
+
+The output of the accelerator is as follows:
+
+* `output_inh_flags`: Output array of 8-bit outputs where each bit in the 8-bit output indicates whether a word is present in the bloom filter which is then used for computing score in the CPU.
 
 ### Run HW Emulation 
 
@@ -219,16 +239,29 @@ At this point of timee, we should review profile view reports and timeline trace
 
   ![](./images/Kernel_4_Guidance_Stall_2.PNG) 
 
+The Profile Summary and Timeline Trace reports are useful tools to analyze the performance of the FPGA-accelerated application. The kernel execution times matches the theoretical expectations and the Timeline Trace provides a visual confirmation that this initial version performs data transfers and computation sequentially.  
+
 ### Review Profile Report 
   - Kernel Execution takes about 292 ms. We are computing 4 words in parallel. The accelerator is architeced at 300 MHz. In total we are computing 350M words (3500 words/document * 100k documents) 
   - Number of words/(Clock Freq * Parallelization factor in kernel) = 350M/(300M*4) = 291.6ms. The actual FPGA compute time is almost same as theoratical calculations. 
 
-  - Host Write Transfer to DDR is 145 ms and Host Read Transfer to DDR is 36 ms
-  - These are equivalne to more than 10GB/sec transfer through PCIe. 
-### Review Timeline Reports
-  - This view shows data transfer from host to fpga and back to host as they appear. It can be seen that host transfer to DDR, compute on FPGA and transfer data back to host occur in sequence. 
+  - Host Write Transfer to DDR is 145 ms and Host Read Transfer to DDR is 36 ms. These indicate that PCIe transfers are occuring at the max BW as DDR is never accessed by host and fpga at the same time and there is no memory access contention. 
+### Review Timeline Trace
+  - This view shows data transfer from host to fpga and back to host as they appear.It can be visuzlized that transfer from host to fpga, fpga compute and transfer from fpga to host are occuring sequentially. 
   - It can also be seen that either host or fpga has access to DDR at any given time. In other words, there is no memory contention between host and kernel accessing same DDR.
+  - As expected, there is a sequential execution of operations starting from the data transferred from the host to the FPGA, followed by compute in the FPGA and transferring back the results from the FPGA to host.
  
+### Resources Utlized 
+
+![](./images/kernel_4_util.PNG) 
+
+Next we are going to build the kernel for processing 8 and 16 words in parallel.
+
+
+### Throughput Acheived - Compute 4 words in Parallel
+- Based on the results, Throughput of the Application is 1399MB/838ms = approx 1.66GBs. This is our first attempt to run application on hardware and we have 4x performance results compared to Software Only.
+
+
 ### Opportunities for Performance improvements  
   - From Guidance Report, we observed that Profile report lists Compute Unit Stalls.
   
@@ -236,14 +269,6 @@ At this point of timee, we should review profile view reports and timeline trace
 
   - Since there is no memory access contention for accessing memory, this is best possible performance for computing 4 words in parallel. Kernel is reading 512-bits of data but using only 128-bits for computing 4 words in parallel. So there is intra-kernel stall being observed as only 4 words are being computed every cycle. The kernel has potential of computing more words since we have resources available on FPGA. We can increase the number of words to be processed in parallel and can experiment with 8 words and 16 words in parallel. 
   - Even though Kernel is operating at the best performance, it can be noted that Kernel has to wait until the complete transfer is done by the host. Usually sending larger buffer is recommended from host to DDR but kernel can't really start the computation. 
-
-
-### Throughput Acheived - Compute 4 words in Parallel
-- Based on the results, Throughput of the Application is 1399MB/838ms = approx 1.66GBs. This is our first attempt to run application on hardware and we have 4x performance results compared to Software Only.
-
-### Resources Utlized 
-
-Next we are going to build the kernel for processing 8 and 16 words in parallel.
 
 ## Kernel Implementation using 8 words in Parallel
 
@@ -269,11 +294,16 @@ We can achieve this by using PARALLELISATION=8 in the code. You can use the foll
 - As expected computing 16 words in parallel, FPGA Time has reduced from 304 ms to 268 ms. 
 
 
+
+### Resources Utlized 
+
+![](./images/kernel_8_util.PNG) 
+
+- Indicate increase in the resources here.
+
 ### Throughput Acheived - Compute 8 words in Parallel
 - Based on the results, Throughput of the Application is 1399MB/797ms = approx 1.75GBs. This is our first attempt to run application on hardware and we have 4x performance results compared to Software Only.
 
-### Resources Utlized 
-- Indicate increase in the resources here.
 
 ## Kernel Implementation using 16 words in Parallel
 In the previous step, you are reading 512-bit input values from DDR and computing 4 words in parallel that uses only 512-bit input values. This steps enables running 8 words in parallel.
@@ -291,16 +321,23 @@ We can achieve this by using PARALLELISATION=16 in the code. You can use the fol
 --------------------------------------------------------------------
  Verification: PASS
 
+### Resources Utlized 
+![](./images/kernel_16_util.PNG) 
+
+- Indicate increase in the resources here.
+
+
 ### Throughput Acheived - Compute 16 words in Parallel
 - Based on the results, Throughput of the Application is 1399MB/797ms = approx 1.75GBs. This is our first attempt to run application on hardware and we have 4x performance results compared to Software Only.
 
-### Resources Utlized 
-- Indicate increase in the resources here.
 
 We are going to use 16 words in parallel for computing in the next section since this has better FPGA performance and there are available resources to build the hardware on FPGA.
  
-So far, we have focused on building kernel based on recommnended methodology. We will look into some of the host code based optimization in the next section
+### Opportunities for Performance improvements  
 
+In this lab, we have focused on building on kernel with max potential with 4, 8 and 16 words in parallel using single buffer. As you observed from Timeline Report that Kernel can't start until the whole buffer is transferred to the DDR. In our case, it was wait of 145ms before the kernel could start. This is substantial time considering the total compute time could be less than that. 
+
+We will explore with kernel computing 16 words in parallel first.  
 
 
 <p align="center"><b>
