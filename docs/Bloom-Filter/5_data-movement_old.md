@@ -1,5 +1,86 @@
 # Data Movement Between the Host and Kernel
 
+## Reviewing the Initial Host Code
+
+The initial version of the accelerated application follows the structure of original software version. The entire input buffer is transfered from the host to the FPGA in a single transaction. Then, the FPGA accelerator performs the computation. Lastly, the results are read back from the FPGA to the host before being post-processed. 
+
+The following figure shows the sequential write-compute-read pattern implemented in this first step
+
+  ![](./images/overlap_single_buffer.PNG)
+
+The FPGA accelerator computes the hash values and flags for the provided input words.
+
+The inputs to the accelerator are as follows:
+
+* `input_doc_words`: Input array which contains the 32-bit words for all the documents.
+* `bloom_filter`: Bloom filter array which contains the inserted hash values of search array.
+* `total_size`: Unsigned int which represents the total size processed by the FPGA when it is called.
+* `load_weights`: Boolean which allows to load the `bloom_filter` array only once to the FPGA in the case of multiple kernel invocations.
+
+The output of the accelerator is as follows:
+
+* `output_inh_flags`: Output array of 8-bit outputs where each bit in the 8-bit output indicates whether a word is present in the bloom filter which is then used for computing score in the CPU.
+
+The accelerator is architected to process 8 words in parallel at 250Mhz. In the test runs we process 401,022,976 words. We can therefore estimate the theoretical FPGA computation time as follows:
+
+* Number of words/(Clock freq * Parallelization factor in Kernel) = 401022976 / (250\*1000000\*8) = 174.86 ms
+
+
+### Run the Application on HW
+
+1. Go to the `makefile` directory and run the make command.
+
+    ```bash
+    cd <project>/modules/module_02/makefile
+    make run STEP=single_buffer SOLUTION=1
+    ```
+
+2. The output is as follows.
+
+    ```
+    Processing 1398.903 MBytes of data
+        Running with a single buffer of 1398.903 MBytes for FPGA processing
+    --------------------------------------------------------------------
+    Executed FPGA accelerated version  |   777.5133 ms   ( FPGA 275.208 ms )
+    Executed Software-Only version     |   3198.4977 ms
+    --------------------------------------------------------------------
+    Verification: PASS
+
+    ```
+  
+    
+
+### Profile Summary Analysis
+
+
+1. Run the following command to look at the Profile Summary Report.
+
+    ```bash
+    cd Vitis-Tutorials/docs/Bloom-Filter/makefile
+    vitis_analyzer ../build/kernel_basic/runOnfpga_hw.xclbin.run_summary
+    ```
+
+*  Looking at the *Kernel Execution* section in the report, we see the kernel execution time as 175.173 ms.
+
+    ![DM_Kernel_Execution_time](./images/kernel_execution_time.png)
+
+   As you can see, the actual kernel execution time closely matches the theoretical number. 
+    
+
+### Timeline Trace Analysis
+
+1. Zoom in to display the timeline trace report as follows:
+
+![](./images/single_buffer_timeline_trace.PNG)
+
+As expected, there is a sequential execution of operations starting from the data transferred from the host to the FPGA, followed by compute in the FPGA and transferring back the results from the FPGA to host.
+
+2. Exit the vitis_analyzer application to return to the terminal.
+
+### Conclusion
+
+The Profile Summary and Timeline Trace reports are useful tools to analyze the performance of the FPGA-accelerated application. The kernel execution times matches the theoretical expectations and the Timeline Trace provides a visual confirmation that this initial version performs data transfers and computation sequentially.  
+ 
 To further improve performance, you will look into overlapping data transfers and compute.
 
 ## Overlapping Data Transfer and Compute
@@ -145,10 +226,10 @@ f. The host waits until the output is read back from the FPGA.
 
     ```
     Processing 1398.903 MBytes of data
-    Split_buffer : Splitting data in 2 sub-buffers of 699.452 MBytes for FPGA processing
+    Splitting data in 2 sub-buffers of 699.452 MBytes for FPGA processing
     --------------------------------------------------------------------
-    Executed FPGA accelerated version  |   704.1167 ms   ( FPGA 231.982 ms )
-    Executed Software-Only version     |   3139.1430 ms
+    Executed FPGA accelerated version  |   746.4979 ms   ( FPGA 242.726 ms )
+    Executed Software-Only version     |   3116.0761 ms
     --------------------------------------------------------------------
     Verification: PASS
 
@@ -174,7 +255,7 @@ The Timeline Trace confirms that we have achieved the execution schedule that we
 
 The total execution time on the FPGA has been improved by vertue of overlapping computation with data transfers. The execution time of the first kernel run and the first data read have been eliminated.
 
-## Optimizing kernel by using local buffer  (RAVI)
+## Optimizing kernel by using local buffer
 Here we can show that there are multiple 64k transfer from host to DDR and not required as we can save the bloom filter coefficients in the local memory.
 
 Show Time line trace -> 
@@ -296,8 +377,7 @@ e. The host waits until the output of each iteration is read back to the host.
  
  The above code is generic enough to split the data into an arbitrary number of multiple buffers.
 
-### Run the Application using kernel computing 16 words in parallel
-MEMORY CONTENTION here and compare later with PF=8?
+### Run the Application
    
 
 1. Go to the `makefile` directory and run the `make` command.
@@ -320,14 +400,12 @@ MEMORY CONTENTION here and compare later with PF=8?
 
     ```
     Processing 1398.907 MBytes of data
-    Generic_Buffer : Splitting data in 16 sub-buffers of 87.432 MBytes for FPGA processing
+    Splitting data in 16 sub-buffers of 87.432 MBytes for FPGA processing
     --------------------------------------------------------------------
-    Executed FPGA accelerated version  |   605.9361 ms   ( FPGA 215.909 ms )
-    Executed Software-Only version     |   3100.3214 ms
+    Executed FPGA accelerated version  |   696.9357 ms   ( FPGA 223.836 ms )
+    Executed Software-Only version     |   3101.3576 ms
     --------------------------------------------------------------------
     Verification: PASS
-
-
     ```
 
 ### Timeline Trace Analysis
@@ -351,27 +429,6 @@ MEMORY CONTENTION here and compare later with PF=8?
 As you can see from the report, the input buffer is split into 16 sub buffers, and there are overlaps between read, compute, and write for all iterations. The total computation is divided in 16 iterations, but 15 of them are happening simultaneously with data transfers and therefore only the last compute counts towards total FPGA execution time.
 
 4. Exit the SDAccel application to return to the terminal.
-
-### Run the Application using kernel computing 16 words in parallel
-
-1. Go to the `makefile` directory and run the `make` command.
- 
-    ```bash
-    cd ~/SDAccel-AWS-F1-Developer-Labs/modules/module_02/makefile
-    make run STEP=generic_buffer ITER=16 SOLUTION=1
-    ```
-2. The output with `ITER` 16 is as follows.
-
-    ```
-    Processing 1398.907 MBytes of data
-    Generic_Buffer : Splitting data in 16 sub-buffers of 87.432 MBytes for FPGA processing
-    --------------------------------------------------------------------
-    Executed FPGA accelerated version  |   718.1435 ms   ( FPGA 227.107 ms )
-    Executed Software-Only version     |   3222.4255 ms
-    --------------------------------------------------------------------
-    Verification: PASS
-
-    ```
 
 ### Conclusion
 
@@ -448,7 +505,7 @@ b. Block the host only if the hash function of the words are still not computed 
 ```
 
 
-### Run the Application using kernel computing 16 words in parallel
+### Run the Application
 
 1. Go to the `modules/module_02/makefile` directory and run the `make` command.
 
@@ -463,10 +520,11 @@ b. Block the host only if the hash function of the words are still not computed 
     Processing 1398.907 MBytes of data
     Splitting data in 16 sub-buffers of 87.432 MBytes for FPGA processing
     --------------------------------------------------------------------
-    Executed FPGA accelerated version  |   453.1903 ms   ( FPGA 213.651 ms )
-    Executed Software-Only version     |   3161.6643 ms
+    Executed FPGA accelerated version  |   457.1986 ms   ( FPGA 219.257 ms )
+    Executed Software-Only version     |   3203.9719 ms
     --------------------------------------------------------------------
-    Verification: PASS
+ Verification: PASS
+
     ```
 
 ### Timeline Trace Analysis
@@ -488,29 +546,6 @@ b. Block the host only if the hash function of the words are still not computed 
 ![](./images/sw_overlap_timeline_trace.PNG)
 
 As seen above in *OpenCL API Calls* of the *Host* section with the yellow marking, the red segments are shorter in width indicating that the processing time of the host CPU is now overlapping with FPGA processing, which improved the overall application execution time. In the previous steps, the host remained completely idle until the FPGA finished all its processing.
-
-
-### Run the Application using kernel computing 8 words in parallel
-1. Go to the `modules/module_02/makefile` directory and run the `make` command.
-
-    ```bash
-    cd ~/SDAccel-AWS-F1-Developer-Labs/modules/module_02/makefile
-    make run STEP=sw_overlap ITER=16 SOLUTION=1
-    ```
-
-2. The output is as follows.
-
-    ```
-    Processing 1398.907 MBytes of data
-    Splitting data in 16 sub-buffers of 87.432 MBytes for FPGA processing
-    --------------------------------------------------------------------
-    Executed FPGA accelerated version  |   418.3823 ms   ( FPGA 223.872 ms )
-    Executed Software-Only version     |   3251.0318 ms
-    --------------------------------------------------------------------
-    Verification: PASS
-    ```
-
-EXPLAIN !!! (This is better than PF=16)
 
 4. Exit the SDAccel application to return to the terminal.
 

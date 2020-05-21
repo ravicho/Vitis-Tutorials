@@ -20,23 +20,25 @@ The original algorithm used for running on CPU was processing word by word. This
     -   Local arrays or hls::stream variables to pass data between these functions.
 
 "runOnfpga" top level function is configured with the following arguments 
-    - input words of 512-bit input words data.
-    - output flags of 512-bit output flags data.
-    - bloom_filter for loading coefficients.
-    - total number of words to be computed. 
 
-Function "runOnfpga" loads the bloom filter coefficients and calls "compute_hash_flags_dataflow" function which has main functionaly of Load, Compute and Store functions.
+    -   Input words of 512-bit input words data.
+    -   Output flags of 512-bit output flags data.
+    -   loom_filter for loading coefficients.
+    -   Total number of words to be computed. 
 
-- Also added #pragmas for HLS to enable task-level pipelining also known as HLS dataflow. This pragma will instruct the HLS compiler to run all sub-functions of Load-Compute-Store simultaneously, creating a pipeline of concurrently running tasks. 
+Top level function "runOnfpga" loads the bloom filter coefficients and calls "compute_hash_flags_dataflow" function which has main functionaly of Load, Compute and Store functions.
 
-- For Load part, buffer and resize functions are implemented in "hls_stream_utils.h"
-    - Function "buffer" function receives 512-bit input words from memory and creates streams of 512-bit words.
-    - Function "resize" creates stream of 512-bit input data to feed function "compute_hash_flags" that requries 8*32-bit intput words = 256 bit input data
-- For Compute part, Original "Hash" function is renamed into function "compute_hash_flags". Since we plan to compute 8 words in parallel, this function will require 8*32-bit intput words = 256 bit input data. 
+- Also added #pragmas DATAFLOW to enable task-level pipelining also known as HLS dataflow. This pragma will instruct the HLS compiler to run all sub-functions of Load-Compute-Store simultaneously, creating a pipeline of concurrently running tasks. 
+
+- For Compute part, Original "Hash" function is renamed into function "compute_hash_flags". 
+    -   Since we plan to compute 8 words in parallel, this function will require 4*32-bit intput words = 128 bit input data. 
     -   For loop is also restructured to input 512-bit of values and capability to compute parallel words by adding nested loop. This loop can be unrolled completely. Since we require 8 words to be computed in parallel, PARALLISATION is set to 8. 
-- For Save part, similar buffer and resize functions are implemented in "hls_stream_utils.h"
-    - Function "resize" reads the output flags, output of function "compute_hash_flags" and creates stream of 512-bit data.
-    - Function "buffer" function receives 512-bit data from resize functiona and creates a burst write of 512-bit value to send to global memoy over AXI interfaces.
+- The input_words, input of compute_hash_flags function are read as 512-bit burst reads from global memory over AXI interface and 512-bit of streams are created. Further, stream of parallel words are created from stream of 512=bit values as compute_hash_flags requires 256-bit for 8 words to be process in parallel. 
+- The output_flags, output of compute_hash_flags function will be 8*8-bit = 64 bit data of output flags. These stream of output flags form a  stream of 512-bit streams and can be written as 512-bit values to global memory over AXI interface. 
+
+Above can be written as sequential loops but must be inside separate functions so that DATAFLOW can be enabled. DATAFLOW only works on function boundaries. 
+
+The above functionality is encapsulated into buffer and stream functions in "hls_stream_utils.h" file. 
 
 2. Here is implemeted code put together for Load, Compute and Store functons.
 
@@ -65,8 +67,8 @@ Function "runOnfpga" loads the bloom filter coefficients and calls "compute_hash
     ```cpp 
     # pragma DATAFLOW
     ```
-This pragma will let function run as indepndent processes and ability to run these in parallel and overlapping fashion. 
 
+Additionally, Kernel code create here is capable of processing words in parallel based on #define PARALLELISATION and can be easily changed to 4,8,16 to process the respective number of parallel words. 
 
 ## Micro Architecture Implementation
 
@@ -144,82 +146,145 @@ Let's ensure that with our changes, the application passes SW Emulation by runni
 
 ``` make run STEP=kernel_basic TARGET=sw_emu SOLUTION=1 ```
 
-### Build Kernel using HW Emulation 
+### Build Kernel using Vitis
 
 We don't need to run the HW Emulation during developing kernel as turnaround time for running HW emulation for all the words could be significantly high. 
 
-However, we can just build the HW to find out if the Kernel successfully was able to create 8 copies of the compute_hash_flags function.
+However, we can just build the HW and review the reports to confirm if the kernel was able to meet the Pragma added in the kernel code. 
+
+1. Run the build command to build the Kernel
 
 ``` make build STEP=kernel TARGET=hw_emu SOLUTION=1 ```
 
+Above command will call v++ compile which further calls Vitis HLS to translate C++ code to RTL which can be mapped on to FPGA.
+
 1. Reviewing Syntheis Report results 
 
-RAVI-> VitisAnalyzer?
 Vitis HLS generates the vitis_hls.log file available at 
-    ../build/kernel_basic/log_dir/runOnfpga_hw/runOnfpga_vitis_hls.log
+    ../build/kernel_4/log_dir/runOnfpga_hw/runOnfpga_vitis_hls.log
 
--   Looking at the HLS reports, we can see that DATAFLOW Pragma has been successfully applied for compute_hash_flags_dataflow 
+2. Use Vitis Analyzer to visualize the HLS report
+``` vitis_analyzer ../build/kernel_4/link_summary ```
 
-INFO: [XFORM 203-712] Applying dataflow to function 'compute_hash_flags_dataflow', detected/extracted 8 process function(s):
+PIC RAVI
 
--   Burst reads must be inferred for compute_hash_flags function for accesssing DDR. The following is confirmation of burst inferring for reading input_doc_words from DDR 0.
-INFO: [HLS 214-115] Burst read of variable length and bit width 512 has been inferred on port 'maxiport0' (/wrk/xsjhdnobkup5/ravic/git_ravicho/Vitis-Tutorials/docs/Bloom-Filter/reference_files/hls_stream_utils.h:12:22)
-INFO: [HLS 214-115] Burst write of variable length and bit width 512 has been inferred on port 'maxiport0' (/wrk/xsjhdnobkup5/ravic/git_ravicho/Vitis-Tutorials/docs/Bloom-Filter/reference_files/hls_stream_utils.h:22:22)
 
-    INFO: [HLS 214-115] Burst read of length 1024 and bit width 512 has been inferred on port 'maxiport1' (/wrk/xsjhdnobkup5/ravic/git_ravicho/Vitis-Tutorials/docs/Bloom-Filter/reference_files/compute_score_fpga.cpp:134:26)
+3. Review the HLS Synthesis report :
+  - Latency reported for "compute_hash_flags" is 25011 cycles. This is based on total of 100,000 words, computed 4 words in parallel. This loop has 25000 iterations and including MurmurHash2 latency, the total latency of 25000 cycles is optimal.
+  - compute_hash_flags_dataflow function has dataflow enabled in Pipeline. This is important to review and indicates that Task level parallelism is enabled and expected to have overlapping across the sub-functions in compute_hash_flags_dataflow function
+  - Latency reported for read_bloom_filter function is 16385 for reading . This loop is iterated over 16384 reading 512-bits of data. (??)
+
+## Reviewing the Initial Host Code
+
+The initial version of the accelerated application follows the structure of original software version. The entire input buffer is transfered from the host to the FPGA in a single transaction. Then, the FPGA accelerator performs the computation. Lastly, the results are read back from the FPGA to the host before being post-processed. 
+
+The following figure shows the sequential write-compute-read pattern implemented in this first step
+
+  ![](./images/overlap_single_buffer.PNG)
+
+The FPGA accelerator computes the hash values and flags for the provided input words.
+
+The inputs to the accelerator are as follows:
+
+* `input_doc_words`: Input array which contains the 32-bit words for all the documents.
+* `bloom_filter`: Bloom filter array which contains the inserted hash values of search array.
+* `total_size`: Unsigned int which represents the total size processed by the FPGA when it is called.
+* `load_weights`: Boolean which allows to load the `bloom_filter` array only once to the FPGA in the case of multiple kernel invocations.
+
+The output of the accelerator is as follows:
+
+* `output_inh_flags`: Output array of 8-bit outputs where each bit in the 8-bit output indicates whether a word is present in the bloom filter which is then used for computing score in the CPU.
 
 ### Run HW Emulation 
 
-You should run HW emulation to verify the functionality is intact by running the following command. Please note that the number of input words used are only 100 here as it will take long time to run the HW Emulation. 
+Run HW emulation to verify the functionality is intact by using the following command.  
+-   Please note that the number of input words used are only 100 here as it will take longer time to run the HW Emulation. 
 
-``` make run STEP=kernel_basic TARGET=hw SOLUTION=1 ```
+``` make run STEP=kernel_basic TARGET=hw_emu SOLUTION=1 ```
 
-The above commands shows that the SIMULATION is PASSED. This ensures that Hardware generated should be functionallity correct. But we haven't run the HW on FPGA yet. Let's run the application on hardware to ensure that application can be run on hardware. 
+The above commands shows that the SIMULATION is PASSED. 
+
+This ensures that Hardware generated should be functionallity correct. But we haven't run the HW on FPGA yet. Let's run the application on hardware to ensure that application can be run on hardware. 
 
 ### Run HW on FPGA
 
 Run the following step for executing appliction on HW. We are using 100,000 documents to be computed on the hardware.
 
-``` make run STEP=kernel_basic TARGET=hw SOLUTION=1 ```
+``` make run STEP=kernel TARGET=hw SOLUTION=1 ```
 
 ```
 Loading runOnfpga_hw.xclbin
  Processing 1398.903 MBytes of data
     Running with a single buffer of 1398.903 MBytes for FPGA processing
 --------------------------------------------------------------------
- Executed FPGA accelerated version  |   797.8023 ms   ( FPGA 304.580 ms )
- Executed Software-Only version     |   3167.8370 ms
+ Executed FPGA accelerated version  |   838.5898 ms   ( FPGA 447.964 ms )
+ Executed Software-Only version     |   3187.0354 ms
 --------------------------------------------------------------------
  Verification: PASS
+
 ```
 
 We have also added functionality in ../referemce_files/run_single_buffer.cpp to track total FPGA Time as well as total application time consumed. 
-- Total FPGA time includes Host to DDR transfer, Compute on FPGA and DDR to host tranfer. This can be achieved in 304 ms.
-- Total time of computing 100k documents is about 797 ms.
+- Total FPGA time includes Host to DDR transfer, Total Compute on FPGA and DDR to host tranfer. This can be achieved in 447 ms 
+- Total time of computing 100k documents is about 838 ms.
 
-### Throughput Acheived - Compute 8 words in Parallel
-- Based on the results, Throughput of the Application is 1399MB/797ms = approx 1.75GBs. This is our first attempt to run application on hardware and we have 4x performance results compared to Software Only.
 
+At this point of timee, we should review profile view reports and timeline trace to extract the information like how much time does it take to transfer the data between host and kernel as well as how much time it takes to compute on FPGA. 
+
+
+
+
+### Review Guidance Report 
+  - KENREL_STALL is flagged as compute unit reports inter-kernel dataflow stalls of 99.97%. This indicates that we have room for kernel performance improvemetns and We will review this later in this section.
+
+  ![](./images/Kernel_4_Guidance_Stall_2.PNG) 
+
+The Profile Summary and Timeline Trace reports are useful tools to analyze the performance of the FPGA-accelerated application. The kernel execution times matches the theoretical expectations and the Timeline Trace provides a visual confirmation that this initial version performs data transfers and computation sequentially.  
+
+### Review Profile Report 
+  - Kernel Execution takes about 292 ms. We are computing 4 words in parallel. The accelerator is architeced at 300 MHz. In total we are computing 350M words (3500 words/document * 100k documents) 
+  - Number of words/(Clock Freq * Parallelization factor in kernel) = 350M/(300M*4) = 291.6ms. The actual FPGA compute time is almost same as theoratical calculations. 
+
+  - Host Write Transfer to DDR is 145 ms and Host Read Transfer to DDR is 36 ms. These indicate that PCIe transfers are occuring at the max BW as DDR is never accessed by host and fpga at the same time and there is no memory access contention. 
+### Review Timeline Trace
+  - This view shows data transfer from host to fpga and back to host as they appear.It can be visuzlized that transfer from host to fpga, fpga compute and transfer from fpga to host are occuring sequentially. 
+  - It can also be seen that either host or fpga has access to DDR at any given time. In other words, there is no memory contention between host and kernel accessing same DDR.
+  - As expected, there is a sequential execution of operations starting from the data transferred from the host to the FPGA, followed by compute in the FPGA and transferring back the results from the FPGA to host.
+ 
 ### Resources Utlized 
 
+![](./images/kernel_4_util.PNG) 
 
-# Kernel Implementation using 16 words in Parallel
+Next we are going to build the kernel for processing 8 and 16 words in parallel.
 
-In the previous step, you are reading 512-bit input values from DDR and computing 8 words in parallel that uses only 256-bit input values. As you may have noticed, we can also compute 16 words in parallel to make use of all of 512-bits at the same time. 
 
-We can achieve this by using PARALLELISATION=16 in the code. You can use the following steps to compute 16 workds in parallel.
+### Throughput Acheived - Compute 4 words in Parallel
+- Based on the results, Throughput of the Application is 1399MB/838ms = approx 1.66GBs. This is our first attempt to run application on hardware and we have 4x performance results compared to Software Only.
 
-## Run HW on FPGA 
 
-``` make run STEP=kernel_basic TARGET=hw SOLUTION=1 ```
+### Opportunities for Performance improvements  
+  - From Guidance Report, we observed that Profile report lists Compute Unit Stalls.
+  
+  ![](./images/Kernel_4_Guidance_Stall.PNG) 
+
+  - Since there is no memory access contention for accessing memory, this is best possible performance for computing 4 words in parallel. Kernel is reading 512-bits of data but using only 128-bits for computing 4 words in parallel. So there is intra-kernel stall being observed as only 4 words are being computed every cycle. The kernel has potential of computing more words since we have resources available on FPGA. We can increase the number of words to be processed in parallel and can experiment with 8 words and 16 words in parallel. 
+  - Even though Kernel is operating at the best performance, it can be noted that Kernel has to wait until the complete transfer is done by the host. Usually sending larger buffer is recommended from host to DDR but kernel can't really start the computation. 
+
+## Kernel Implementation using 8 words in Parallel
+
+In the previous step, you are reading 512-bit input values from DDR and computing 4 words in parallel that uses only 128-bit input values. This steps enables running 8 words in parallel.
+
+We can achieve this by using PARALLELISATION=8 in the code. You can use the following steps to compute 8 workds in parallel.
+
+### Run HW on FPGA 
+
+``` make run STEP=kernel_8 TARGET=hw SOLUTION=1 ```
 
 ```
-Loading runOnfpga_hw.xclbin
- Processing 1398.903 MBytes of data
-    Running with a single buffer of 1398.903 MBytes for FPGA processing
+ Running with a single buffer of 1398.903 MBytes for FPGA processing
 --------------------------------------------------------------------
- Executed FPGA accelerated version  |   724.0923 ms   ( FPGA 268.346 ms )
- Executed Software-Only version     |   3086.9720 ms
+ Executed FPGA accelerated version  |   753.0575 ms   ( FPGA 300.168 ms )
+ Executed Software-Only version     |   3159.7843 ms
 --------------------------------------------------------------------
  Verification: PASS
 
@@ -229,16 +294,50 @@ Loading runOnfpga_hw.xclbin
 - As expected computing 16 words in parallel, FPGA Time has reduced from 304 ms to 268 ms. 
 
 
+
+### Resources Utlized 
+
+![](./images/kernel_8_util.PNG) 
+
+- Indicate increase in the resources here.
+
 ### Throughput Acheived - Compute 8 words in Parallel
 - Based on the results, Throughput of the Application is 1399MB/797ms = approx 1.75GBs. This is our first attempt to run application on hardware and we have 4x performance results compared to Software Only.
 
+
+## Kernel Implementation using 16 words in Parallel
+In the previous step, you are reading 512-bit input values from DDR and computing 4 words in parallel that uses only 512-bit input values. This steps enables running 8 words in parallel.
+
+We can achieve this by using PARALLELISATION=16 in the code. You can use the following steps to compute 16 workds in parallel.
+
+### Run HW on FPGA 
+
+``` make run STEP=kernel_16 TARGET=hw SOLUTION=1 ```
+
+
+--------------------------------------------------------------------
+ Executed FPGA accelerated version  |   640.5342 ms   ( FPGA 249.019 ms )
+ Executed Software-Only version     |   3091.9001 ms
+--------------------------------------------------------------------
+ Verification: PASS
+
 ### Resources Utlized 
+![](./images/kernel_16_util.PNG) 
+
 - Indicate increase in the resources here.
+
+
+### Throughput Acheived - Compute 16 words in Parallel
+- Based on the results, Throughput of the Application is 1399MB/797ms = approx 1.75GBs. This is our first attempt to run application on hardware and we have 4x performance results compared to Software Only.
+
 
 We are going to use 16 words in parallel for computing in the next section since this has better FPGA performance and there are available resources to build the hardware on FPGA.
  
-So far, we have focused on building kernel based on recommnended methodology. We will look into some of the host code based optimization in the next section
+### Opportunities for Performance improvements  
 
+In this lab, we have focused on building on kernel with max potential with 4, 8 and 16 words in parallel using single buffer. As you observed from Timeline Report that Kernel can't start until the whole buffer is transferred to the DDR. In our case, it was wait of 145ms before the kernel could start. This is substantial time considering the total compute time could be less than that. 
+
+We will explore with kernel computing 16 words in parallel first.  
 
 
 <p align="center"><b>

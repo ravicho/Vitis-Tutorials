@@ -200,7 +200,7 @@ Rerun Original s/w in cpu_run directory using NUM_DOCS=100000,
     Compute Score processing time        |    370.5588 ms
     ------------------------------------------------------------
 
-Software Version is about 345ms which is equivalent to 1400 MB/ 3450ms = approx 400MBps 
+Software Version is about 3450ms which is equivalent to 1400 MB/ 3450ms = approx 400MBps 
 
 We have decided to keep only Compute Hash function in FPGA. This function takes about 3450ms in Software. 
 
@@ -241,22 +241,25 @@ In FPGA,
   - So we dont really need to calculate all the flags before starting to execute block "Compute Score". The advantage of this implemetation can also enable executing block "Compute Score" run in parallel to hash function as well. 
   - Based on above analysis, Hash functions are good candidate for computation on FPGA and Compute Score calculation can be carried out on Host. Hash functions can compute the flags based on 2nd set of words blocks while Compute Score can be calculated on the 1st set of flags computed by Hash functions. We can take advantage of effectively running Hash block and profile block as parallel to further improve the performance. 
 
-Running the aplication on FPGA also adds additional delay in tranferring the data from host to device memory and reading it back. The whole application time should be split and budgeted based on following
-1. Transferring document data of size 1400MB from Host to device DDR using PCIe. Using PCIe BW of 9GBps, approximate time for transfer = 1400MB/9G = 155ms
-2. Compute the Hashes on FPGA
-3. Transferring flags data of size 350MB from Device to Host using PCIe. Using PCIe BW of 9GBps, approximate time for transfer = 350MB/9G = 39ms. This data transfer can be carried out in parallel with computing hash functons.
-4. Calculate the Compute Score once all the flags are available from FPGA. This takes about 370ms on CPU 
-
 So the application conceptually can look like following : 
 
 ![](./images/Architect2.PNG) 
 
-The performance of the system will be determined by the slowest block of your system. In this case, we are performing Compute Score on CPU and it takes about 370ms. Even if Hashes can be computed hypothetical in no time, the overall application will take at least 370ms. This should be our goalpoast for achieving perforamnce. 
+Running the aplication on FPGA also adds additional delay in tranferring the data from host to device memory and reading it back. The whole application time should be split and budgeted based on following
+1. Transferring document data of size 1400MB from Host to device DDR using PCIe. Using PCIe Write BW of approx 8.5GBps, approximate time for transfer = 1400MB/8.5G = 165ms
+2. Compute the Hashes on FPGA
+3. Transferring flags data of size 350MB from Device to Host using PCIe. Using PCIe Read BW of approx 12GBps, approximate time for transfer = 350MB/12G = 3.25ms. This data transfer can be carried out in parallel with computing hash functons.
+4. Calculate the Compute Score once all the flags are available from FPGA. This takes about total of 370ms on CPU and also can be overlapped with compute and transfering of flags back to host. 
 
-Since Compute score is computed on the CPU and we can't accelerte this further, we can at the best hide the latency of transferring data from host to FPGA, computing Hashes and transferring data from FPGA to host. These can be carried out in parallel with Hash functions. 
+
+
+The performance of the system will be determined by the slowest block of your system. In this case, we are performing Compute Score on CPU and it takes about 370ms. Lets say if we could compute Hash in no time, the overall application will take at least 370ms. This should be our goalpoast for achieving perforamnce. 
+
+Since Compute score is computed on the CPU and we can't accelerte this further, we can at the best hide the latency of transferring data from host to FPGA, compute time for calculating Hashes and transferring data from FPGA to host. 
+
 Further, tranferring data from host, computing Hashes and trasferring data from FPGA to host, all of these can also be overlapped.
 
-We can set the goal of computing the Compute score of 100000 documents closer to 400ms which is equivalent of 1400MB/400ms = approx 3.5GBs
+We can set the goal of computing the Compute score of 100000 documents closer to "Compute Score" time of 370ms, which is equivalent of 1400MB/370ms = approx 4GBs. Setting up goal in terms of achievable BW will help us architect the kernels. 
 
 
 
@@ -276,9 +279,9 @@ where:
 
 The function "Hash" calls  "Murmurhash2" twice, each of which can be considered as 1 Opeartion. So the "Computational Intensity" is 2. 
 
-**Thw = (Frequency\*1)samples**
+**Thw = (Frequency/2)samples**
 
-Throughput of the whole application is determined by the minimum throughput of the function. If we are producing flags as an output of Hash function every cycle then every function in the chain should be able to initiate itself again every cycle. That means the initiation interval of all the functions on FPGA in previous visualization should be 1. 
+Throughput of the whole application is determined by the minimum throughput of a function. If we are producing flags as an output of Hash function every cycle then every function in the chain should be able to initiate itself again every cycle. That means the initiation interval of all the functions on FPGA in previous visualization should be 1. 
 
 Because each sample is 4 bytes of data and computational intensity is 2, with II=1, the maximum throughput of kernel is: 
 
@@ -288,31 +291,34 @@ OR
 
 **Thw = (300MHz/2)\*4B = 600MB/s**.
 
-Each word in "Hash" function can be computed in parallel so muliple words can be computed in parallel to improve the acceleration.
+Each word in "Murmurhash2" functions can be computed in parallel so muliple words can be computed in parallel to improve the acceleration.
 
 ### Determine How Much Parallelism is Needed
 
 **Parallelism Needed = Tgoal/Thw**
 
-**Parallelism Needed = 3.5GBps/600MBps** = approx 6 times. 
+**Parallelism Needed = 4GBps/600MBps** = approx 7 "Murmurhash2" functions in parallel. 
 
 
 ### Determine How Many Samples the Datapath Should be Processing in Parallel
 
-We must have about 8 "Murmurhash2" functions to meet the goal of 3.5GBps. Each word calls this function twice and processing 4 words in parallel will use 8 of "Murmurhash2" function.
+We must have about 8 "Murmurhash2" functions to meet the goal of 4GBps. Each word calls this function twice and processing 4 words in parallel will use 8 of "Murmurhash2" function.
 
 The above theoratical calculations are based on idealistic scenario and memory bottlenecks are not considered. As the data will be accessed from host and Kenel at the same time, we should plan for process even more words to give extra margin for memory bottnecks. 
 
-If we could create kernel to process say 8 words in parallel, then we can be confident to achieve overall application performance of 2GBps. 
+First, we will srart by creating kernel capable of reading 4 words in parallel.Next, we will review the profiling and timeline reports to identify opportuities of performance improvements and explore kernel capable of processing more words in parallel. We will also send 100,000 documents in one transfer from host to device and recieve all the flags from device to host in one tranfer so that there is no memory contention. We will create kernel with most optimized performance 
 
-Also, in the forthcoming sections we are going to implement the kernel and host code. First we will analyze the results by keeping hash functions on FPGA and Compute Score on CPU to be proecessed in sequential mode. Once we implment the kernel that matches our defined spec, we can introduce parallelism between Hashes and Compute Score functions and thus improve the performance
+
+In the forthcoming sections we will explore sending 100,000 documents in chunks so that kernel compute can be overlapped with host data transfer and update host code for the optimized application performance. We will analyze the results by keeping hash functions on FPGA and Compute Score on CPU to be proecessed in sequential mode. 
+
+Once we implment the kernel that matches our defined spec and optimized the host code, we can introduce parallelism between compute on FPGA and Compute Score functions on CPU.
 
 ## Architectural spec for Kenel, Target Performance, Interface Widths, Datapath Widths etc.
 
 At this stage of project, we have identified the following requirements of the kernel for optimal application performance during this architecture definition phase
 
-- Process 8 words in Parallel for computing Hashes
-- Datapath width of 512-bit. Processing 8 words in parallel will require 32bit*8 = 256 bits in parallel but its recommended to read max possible 512-bits in parallel since the input data is contigous. This way we will need less number of memory accesses but we will need internal buffering.
+- Process 4 words in Parallel for computing Hashes
+- Datapath width of 512-bit. Processing 4 words in parallel will require 32bit*4 = 128-bits in parallel but its recommended to read max possible 512-bits in parallel since the input data is contigous. This way we will need less number of memory accesses but we will need internal buffering.
 - Throughput requirements of reading input words and writing flags every cycle i.e. II=1
 
 ## Next Step
