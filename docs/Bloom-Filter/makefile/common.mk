@@ -44,7 +44,7 @@ else
 endif
 
 host: $(SRCDIR)/*.cpp $(SRCDIR)/*.c $(SRCDIR)/*.h
-	mkdir -p $(RUNDIR)
+	mkdir -p $(BUILDDIR)
 	g++ -D__USE_XOPEN2K8 -D__USE_XOPEN2K8 \
 		-I$(XILINX_XRT)/include/ \
 		-I$(SRCDIR) \
@@ -52,7 +52,7 @@ host: $(SRCDIR)/*.cpp $(SRCDIR)/*.c $(SRCDIR)/*.h
 		$(HOST_SRC_CPP) \
 		-L$(XILINX_XRT)/lib/ \
 		-lxilinxopencl -lpthread -lrt \
-		-o $(RUNDIR)/host
+		-o $(BUILDDIR)/host
 
 emconfig.json:
 	cp $(SRCDIR)/emconfig.json .
